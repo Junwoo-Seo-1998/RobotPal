@@ -1,0 +1,43 @@
+name: "emscripten deploy"
+on:
+  workflow_run:
+    workflows: ["emscripten build"] # "Emsdk Build" 워크플로우를 감시
+    types:
+      - completed # 워크플로우가 '완료'되었을 때
+    branches:
+      - main # 'main' 브랜치에서 실행된 빌드만 해당
+
+# 배포에 필요한 권한
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    
+    # 'Emsdk Build' 워크플로우가 성공했을 때만 배포 실행
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      # 1. Pages 환경 설정
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        
+      # 2. 'Emsdk Build' 워크플로우에서 업로드한 아티팩트 다운로드
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: RobotPalWeb # 'build'에서 업로드한 아티팩트 이름
+          path: . # 현재 디렉토리에 다운로드
+          # 'workflow_run'을 통해 트리거되었으므로, 해당 run의 ID를 사용
+          run-id: ${{ github.event.workflow_run.id }}
+
+      # 3. GitHub Pages에 배포
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -48,7 +48,6 @@ jobs:
         uses: actions/upload-artifact@v4 
         with:
           name: RobotPalWeb
-          working-directory: build/RobotPal
           path: |
             ./build/RobotPal/RobotPal.html
             ./build/RobotPal/RobotPal.js
