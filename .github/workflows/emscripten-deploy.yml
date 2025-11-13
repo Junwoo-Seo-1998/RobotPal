@@ -37,6 +37,11 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R ./RobotPalWeb
 
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./RobotPalWeb
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
