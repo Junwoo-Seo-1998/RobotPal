@@ -1,7 +1,7 @@
 #include "RobotPal/EngineApp.h"
 #include "RobotPal/Window.h"
 #include "RobotPal/ImGuiManager.h"
-#include "RobotPal/Util/emscripten_mainloop.h"
+//#include "RobotPal/Util/emscripten_mainloop.h
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
