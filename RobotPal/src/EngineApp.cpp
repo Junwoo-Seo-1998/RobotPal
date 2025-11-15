@@ -12,10 +12,10 @@
 #include <emscripten.h>
 #include <functional>
 // To give the Emscripten main loop access to the EngineApp instance                                                                                                         │
-static std::function<void()> MainLoopForEmscriptenP;
+static std::function<void()> MainLoopForEmscripten;
 void emscripten_main_loop()                                                                                                                                                  │
 {                                                                                                                                                                            │
-    MainLoopForEmscriptenP();                                                                                                                                              │
+    MainLoopForEmscripten();                                                                                                                                              │
 }       
 #endif
 
@@ -40,7 +40,7 @@ void EngineApp::MainLoop()
     // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
-    MainLoopForEmscriptenP=[&]()
+    MainLoopForEmscripten=[&]()
     {
         MainLoopIteration();
     };
