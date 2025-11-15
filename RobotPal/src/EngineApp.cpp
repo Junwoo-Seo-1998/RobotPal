@@ -45,12 +45,12 @@ void EngineApp::MainLoop()
 #else
     while (!m_Window->ShouldClose())
     {
-        MainLoopIter();
+        MainLoopIteration();
     }
 #endif
 }
 
-void EngineApp::MainLoopIter()
+void EngineApp::MainLoopIteration()
 {
     //TODO: rm later
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
