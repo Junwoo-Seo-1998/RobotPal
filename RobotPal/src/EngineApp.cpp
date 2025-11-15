@@ -11,11 +11,11 @@
 #ifdef __EMSCRIPTEN__  
 #include <emscripten.h>
 #include <functional>
-// To give the Emscripten main loop access to the EngineApp instance                                                                                                         │
+// To give the Emscripten main loop access to the EngineApp instance
 static std::function<void()> MainLoopForEmscripten;
-void emscripten_main_loop()                                                                                                                                                  │
-{                                                                                                                                                                            │
-    MainLoopForEmscripten();                                                                                                                                              │
+void emscripten_main_loop()
+{                                                                                                                                                                        
+    MainLoopForEmscripten();
 }       
 #endif
 
