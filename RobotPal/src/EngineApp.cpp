@@ -8,7 +8,7 @@
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
 #include <glad/gles2.h>
-
+#include "RobotPal/Buffer.h"
 void EngineApp::Run()
 {
     Init();
@@ -26,6 +26,25 @@ void EngineApp::Init()
 void EngineApp::MainLoop()
 {
     //TODO: rm later
+    bool test=true;
+    if(test)
+    {
+
+        float vertices[] = {
+            -0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
+            0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
+        };
+        auto vertexBuffer = std::make_shared<VertexBuffer>(vertices, sizeof(vertices));
+
+        BufferLayout layout = {
+            { DataType::Float3, "a_Position" }, // Location 0
+            { DataType::Float3, "a_Normal" },   // Location 1
+            { DataType::Float2, "a_TexCoord" }  // Location 2
+        };
+        vertexBuffer->SetLayout(layout);
+
+    }
+
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 #ifdef __EMSCRIPTEN__
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
