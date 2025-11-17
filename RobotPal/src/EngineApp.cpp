@@ -7,7 +7,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h>
-
+#include <iostream>
 #ifdef __EMSCRIPTEN__  
 #include <emscripten.h>
 #include <functional>
@@ -32,7 +32,7 @@ void EngineApp::Init()
     m_Window->Init();
     ImGuiManager::Get().Init(m_Window->GetNativeWindow());
     #ifdef __EMSCRIPTEN__  
-        cout<<"__EMSCRIPTEN__ Mode\n";
+        std::cout<<"__EMSCRIPTEN__ Mode\n";
     #endif
 }
 
