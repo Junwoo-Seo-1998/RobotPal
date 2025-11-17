@@ -35,9 +35,9 @@ bool Window::Init()
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
-
-
+    
     m_WindowHandle=window;
+    return true;
 }
 
 bool Window::ShouldClose()
