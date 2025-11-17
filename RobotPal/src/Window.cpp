@@ -1,5 +1,6 @@
 #include "RobotPal/Window.h"
 #include <GLFW/glfw3.h>
+#include <glad/gles2.h>
 #include "imgui_impl_glfw.h" // GetContentScaleForMonitor를 위해 필요
 
 Window::Window(int width, int height, const std::string &title)
@@ -34,8 +35,9 @@ bool Window::Init()
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+    gladLoadGLES2(glfwGetProcAddress);
     glfwSwapInterval(1); // Enable vsync
-    
+
     m_WindowHandle=window;
     return true;
 }

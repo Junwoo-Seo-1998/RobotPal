@@ -23,16 +23,24 @@ add_library(imgui STATIC
 
 target_include_directories(imgui PUBLIC ${imgui_external_SOURCE_DIR} ${imgui_external_SOURCE_DIR}/backends/)
 
+
+add_library(glad STATIC ${CMAKE_SOURCE_DIR}/External/glad/src/gles2.c)
+target_include_directories(glad PUBLIC ${CMAKE_SOURCE_DIR}/External/glad/include)
+
+
 file(GLOB_RECURSE ROBOTPAL_SOURCES 
     CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/RobotPal/src/**.cpp"
 )
 add_executable(RobotPal ${ROBOTPAL_SOURCES})
 
+target_compile_definitions(RobotPal PRIVATE GLFW_INCLUDE_NONE)
 
 target_include_directories(RobotPal PUBLIC
    ${CMAKE_SOURCE_DIR}/RobotPal/include
 )
+
+target_link_libraries(RobotPal PRIVATE glad)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET RobotPal PROPERTY CXX_STANDARD 20)
