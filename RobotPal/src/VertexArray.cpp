@@ -27,61 +27,48 @@ std::shared_ptr<VertexArray> VertexArray::Create()
 
 VertexArray::VertexArray()
 {
+    glGenVertexArrays(1, &m_RendererID);
 }
 
 VertexArray::~VertexArray()
 {
+    glDeleteVertexArrays(1, &m_RendererID);
 }
 
 void VertexArray::Bind() const
 {
-    uint32_t index = 0;
-    for (const auto& vertexBuffer : m_VertexBuffers)
-    {
-        vertexBuffer->Bind();
-        const auto& layout = vertexBuffer->GetLayout();
-        for (const auto& element : layout)
-        {
-            glEnableVertexAttribArray(index);
-            glVertexAttribPointer(index,
-                element.GetComponentCount(),
-                ShaderDataTypeToOpenGLBaseType(element.Type),
-                element.Normalized ? GL_TRUE : GL_FALSE,
-                layout.GetStride(),
-                (const void*)(uintptr_t)element.Offset);
-            index++;
-        }
-    }
-
-    if (m_IndexBuffer)
-        m_IndexBuffer->Bind();
+    glBindVertexArray(m_RendererID);
 }
 
 void VertexArray::UnBind() const
 {
-    uint32_t index = 0;
-    for (const auto& vertexBuffer : m_VertexBuffers)
-    {
-        vertexBuffer->UnBind();
-        const auto& layout = vertexBuffer->GetLayout();
-        for (size_t i = 0; i < layout.GetElements().size(); i++)
-        {
-            glDisableVertexAttribArray(index);
-            index++;
-        }
-    }
-
-    if (m_IndexBuffer)
-        m_IndexBuffer->UnBind();
+    glBindVertexArray(0);
 }
 
 void VertexArray::AddVertexBuffer(const std::shared_ptr<VertexBuffer>& vertexBuffer)
 {
+    glBindVertexArray(m_RendererID);
+    vertexBuffer->Bind();
+
+    const auto& layout = vertexBuffer->GetLayout();
+    for (const auto& element : layout)
+    {
+        glEnableVertexAttribArray(m_VertexBufferIndexOffset);
+        glVertexAttribPointer(m_VertexBufferIndexOffset,
+            element.GetComponentCount(),
+            ShaderDataTypeToOpenGLBaseType(element.Type),
+            element.Normalized ? GL_TRUE : GL_FALSE,
+            layout.GetStride(),
+            (const void*)(uintptr_t)element.Offset);
+        m_VertexBufferIndexOffset++;
+    }
     m_VertexBuffers.push_back(vertexBuffer);
 }
 
 void VertexArray::SetIndexBuffer(const std::shared_ptr<IndexBuffer>& indexBuffer)
 {
+    glBindVertexArray(m_RendererID);
+    indexBuffer->Bind();
     m_IndexBuffer = indexBuffer;
 }
 
