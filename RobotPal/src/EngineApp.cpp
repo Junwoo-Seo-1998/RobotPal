@@ -2,6 +2,7 @@
 #include "RobotPal/Window.h"
 #include "RobotPal/ImGuiManager.h"
 #include "RobotPal/Util/emscripten_mainloop.h"
+#include "RobotPal/SceneManager.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -24,9 +25,13 @@ void EngineApp::Run()
 
 void EngineApp::Init()
 {
-    m_Window=std::make_unique<Window>(1280, 720, "RobotPal");
+    m_Window=std::make_shared<Window>(1280, 720, "RobotPal");
     m_Window->Init();
     ImGuiManager::Get().Init(m_Window->GetNativeWindow());
+
+    m_SceneManager = std::make_shared<SceneManager>(m_World);
+
+
     m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
 
     // Create cube
@@ -146,6 +151,8 @@ void EngineApp::Init()
 
 void EngineApp::MainLoop()
 {
+    m_LastFrameTime=(float)glfwGetTime();
+
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     glEnable(GL_DEPTH_TEST);
 #ifdef __EMSCRIPTEN__
@@ -156,6 +163,12 @@ void EngineApp::MainLoop()
     while (!m_Window->ShouldClose())
 #endif
     {
+        float currentFrame = (float)glfwGetTime();
+        float dt = currentFrame - m_LastFrameTime;
+        m_LastFrameTime = currentFrame;
+
+        if (dt > 0.1f) dt = 0.1f;
+
         m_Window->PollEvents();
         if (m_Window->IsMinimized())
         {
@@ -163,6 +176,9 @@ void EngineApp::MainLoop()
             continue;
         }
         
+        m_SceneManager->OnUpdate(dt);
+        m_World.progress(dt);
+
         // Clear the screen
         int display_w, display_h;
         glfwGetFramebufferSize((GLFWwindow*)m_Window->GetNativeWindow(), &display_w, &display_h);
@@ -196,6 +212,7 @@ void EngineApp::MainLoop()
 
         //draw gui
         {
+            m_SceneManager->OnImGuiRender();
             ImGui::Begin("Cube Color");
             ImGui::ColorEdit4("Color", &m_CubeColor.x);
             ImGui::End();
