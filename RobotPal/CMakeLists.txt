@@ -3,6 +3,15 @@
 #
 include(FetchContent)
 
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY	https://github.com/g-truc/glm.git
+	GIT_TAG 	a532f5b1cf27d6a3c099437e6959cf7e398a0a67 #refs/tags/1.0.2
+)
+
+FetchContent_MakeAvailable(glm)
+
+
 FetchContent_Declare(imgui_external
 	GIT_REPOSITORY "https://github.com/ocornut/imgui.git"
 	GIT_TAG "v1.92.4-docking"
@@ -40,6 +49,7 @@ target_include_directories(RobotPal PUBLIC
    ${CMAKE_SOURCE_DIR}/RobotPal/include
 )
 
+target_link_libraries(RobotPal PRIVATE glm::glm)
 target_link_libraries(RobotPal PRIVATE glad)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

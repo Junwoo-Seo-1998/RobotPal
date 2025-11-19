@@ -5,13 +5,10 @@
 #include <unordered_map>
 #include <memory>
 
-// Forward declaration for GLM types. If you use GLM, include its headers here.
-// For now, we'll use basic types and pointers.
-namespace glm {
-    struct vec3;
-    struct vec4;
-    struct mat4;
-}
+#include <glm/glm.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 class Shader
 {
@@ -32,13 +29,12 @@ public:
     void SetInt(const std::string& name, int value);
     void SetIntArray(const std::string& name, int* values, uint32_t count);
     void SetFloat(const std::string& name, float value);
-    void SetFloat2(const std::string& name, float v0, float v1);
-    void SetFloat3(const std::string& name, float v0, float v1, float v2);
-    void SetFloat4(const std::string& name, float v0, float v1, float v2, float v3);
+    void SetFloat2(const std::string& name, const glm::vec2& value);
+    void SetFloat3(const std::string& name, const glm::vec3& value);
+    void SetFloat4(const std::string& name, const glm::vec4& value);
     
-    // Use this for glm::vec3, glm::vec4 etc. by passing glm::value_ptr(your_matrix)
-    void SetMat3(const std::string& name, const float* matrix);
-    void SetMat4(const std::string& name, const float* matrix);
+    void SetMat3(const std::string& name, const glm::mat3& matrix);
+    void SetMat4(const std::string& name, const glm::mat4& matrix);
 
     const std::string& GetName() const { return m_Name; }
 
