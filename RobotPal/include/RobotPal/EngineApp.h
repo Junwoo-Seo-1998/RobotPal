@@ -1,6 +1,7 @@
 #ifndef __ENGINEAPP_H__
 #define __ENGINEAPP_H__
 #include <memory>
+#include <glm/glm.hpp>
 
 class Window;
 class VertexArray;
@@ -16,8 +17,9 @@ private:
     void Shutdown();
     
     std::shared_ptr<Window> m_Window;
-    std::shared_ptr<VertexArray> m_TriangleVA;
-    std::shared_ptr<Shader> m_TriangleShader;
+    std::shared_ptr<VertexArray> m_CubeVA;
+    std::shared_ptr<Shader> m_CubeShader;
+    glm::vec4 m_CubeColor;
 };
 
 #endif

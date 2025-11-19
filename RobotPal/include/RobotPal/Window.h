@@ -14,6 +14,9 @@ public:
     void Shutdown();
     void* GetNativeWindow();
     bool IsMinimized();
+
+    int GetWidth() const { return m_LogicalWidth; }
+    int GetHeight() const { return m_LogicalHeight; }
 private:
     void* m_WindowHandle = nullptr;
     int m_LogicalWidth;
