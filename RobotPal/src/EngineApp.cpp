@@ -17,6 +17,7 @@
 
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/SandboxScene.h"
+#include "RobotPal/Core/AssetManager.h"
 
 void EngineApp::Run()
 {
@@ -96,6 +97,7 @@ void EngineApp::MainLoop()
 
 void EngineApp::Shutdown()
 {
+    AssetManager::Get().ClearData();
     ImGuiManager::Get().Shutdown();
     m_Window->Shutdown();
 }

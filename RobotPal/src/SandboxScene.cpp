@@ -8,7 +8,7 @@
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
 #include "RobotPal/GlobalComponents.h"
-
+#include "RobotPal/Core/ModelLoader.h"
 #include <iostream>
 
 WindowData windowSize;
@@ -20,6 +20,8 @@ void SandboxScene::OnEnter()
               {
             std::cout << "화면 크기가 변경됨! " << win.width << "x" << win.height << std::endl;
             windowSize=win; });
+
+    ModelLoader::LoadModel(this, "./Assets/jetank.glb");
 
     m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
 
