@@ -10,6 +10,7 @@
 #include <GLFW/glfw3.h>
 #include <glad/gles2.h>
 
+#include "RobotPal/Core/RenderCommand.h"
 #include "RobotPal/VertexArray.h"
 #include "RobotPal/Buffer.h"
 #include "RobotPal/Shader.h"
@@ -39,9 +40,9 @@ void EngineApp::Init()
 void EngineApp::MainLoop()
 {
     m_LastFrameTime=(float)glfwGetTime();
+    glm::vec4 clear_color = {0.45f, 0.55f, 0.60f, 1.00f};
 
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    glEnable(GL_DEPTH_TEST);
+    RenderCommand::Init();
 #ifdef __EMSCRIPTEN__
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
@@ -68,9 +69,9 @@ void EngineApp::MainLoop()
         glfwGetFramebufferSize((GLFWwindow*)m_Window->GetNativeWindow(), &display_w, &display_h);
         m_World.set<WindowData>({ (float)display_w, (float)display_h});
 
-        glViewport(0, 0, display_w, display_h);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        RenderCommand::SetViewport(0,0, display_w, display_h);
+        RenderCommand::SetClearColor(clear_color);
+        RenderCommand::Clear();
         
         m_SceneManager->OnUpdate(dt);
         m_World.progress(dt);
