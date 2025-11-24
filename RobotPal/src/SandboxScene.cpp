@@ -10,7 +10,8 @@
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/ModelLoader.h"
 #include <iostream>
-
+#include "RobotPal/Components/Components.h"
+#include "RobotPal/Entity.h"
 WindowData windowSize;
 void SandboxScene::OnEnter()
 {
@@ -22,6 +23,10 @@ void SandboxScene::OnEnter()
             windowSize=win; });
 
     ModelLoader::LoadModel(this, "./Assets/jetank.glb");
+
+    m_Cube=CreateEntity("cube");
+
+    m_Cube.Set<TransformComponent>({});
 
     m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
 
@@ -145,7 +150,9 @@ void SandboxScene::OnUpdate(float dt)
     glm::mat4 view = glm::mat4(1.0f);
     glm::mat4 projection = glm::mat4(1.0f);
 
-    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+    //model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+    m_Cube.Get<TransformComponent>().Rotation={0.f, glm::degrees((float)glfwGetTime()), 0.f};
+    model=m_Cube.Get<TransformComponent>().WorldMatrix;
     glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
     view = glm::translate(glm::mat4(1.0f), -viewPos);
     projection = glm::perspective(glm::radians(45.0f), windowSize.GetAspect(), 0.1f, 100.0f);

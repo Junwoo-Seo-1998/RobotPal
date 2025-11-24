@@ -36,53 +36,7 @@ flecs::entity ModelLoader::LoadModel(Scene *scene, const std::string &filepath)
 
 void ModelLoader::ProcessNode(Scene *scene, flecs::entity parent, tinygltf::Model &model, tinygltf::Node &node)
 {
-    Entity entity = scene->CreateEntity(node.name.empty() ? "Node" : node.name);
-    flecs::entity handle = entity.GetHandle();
-
-    handle.child_of(parent);
-
-    entity.AddComponent<TransformComponent>();
-    auto* transform = entity.GetComponent<TransformComponent>();
-    if (!node.translation.empty()) {
-        transform->Position = glm::make_vec3(node.translation.data());
-    }
-    if (!node.rotation.empty()) {
-        glm::quat q = glm::make_quat(node.rotation.data());
-        transform->Rotation = glm::degrees(glm::eulerAngles(q));
-    }
-    if (!node.scale.empty()) {
-        transform->Scale = glm::make_vec3(node.scale.data());
-    }
-    if (!node.matrix.empty()) {
-        transform->WorldMatrix = glm::make_mat4(node.matrix.data());
-        // TODO: Decompose matrix to get T, R, S
-    }
-
-    if (node.mesh > -1) {
-        const auto& gltfMesh = model.meshes[node.mesh];
-        for (const auto& primitive : gltfMesh.primitives) {
-            // In a real engine, a single node might have multiple primitives,
-            // creating multiple renderable sub-entities. For this project,
-            // we'll simplify and assume one primitive per node, or just take the first.
-            // A more robust approach would create a child entity for each primitive.
-
-            auto mesh = ProcessMesh(model, primitive, gltfMesh.name);
-            entity.SetComponent<MeshFilter>({mesh});
-
-            // Create a default material.
-            // In a full engine, you'd process material properties from the glTF file.
-            auto material = std::make_shared<Material>();
-            material->shader = AssetManager::Get().GetShader("default"); // Assuming a "default" shader exists
-            entity.SetComponent<MeshRenderer>({material});
-            
-            // For simplicity, we only process the first primitive
-            break; 
-        }
-    }
-
-    for (int childIdx : node.children) {
-        ProcessNode(scene, handle, model, model.nodes[childIdx]);
-    }
+    
 }
 
 std::shared_ptr<Mesh> ModelLoader::ProcessMesh(tinygltf::Model &model, const tinygltf::Primitive &primitive, const std::string &name)

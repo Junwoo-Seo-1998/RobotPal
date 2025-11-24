@@ -3,7 +3,6 @@
 #include "RobotPal/Scene.h"
 #include "glm/glm.hpp"
 #include <memory>
-
 class VertexArray;
 class Shader;
 
@@ -21,6 +20,7 @@ public:
 
 private:
     Entity m_Camera;
+    Entity m_Cube;
     std::shared_ptr<VertexArray> m_CubeVA;
     std::shared_ptr<Shader> m_CubeShader;
     glm::vec4 m_CubeColor;
