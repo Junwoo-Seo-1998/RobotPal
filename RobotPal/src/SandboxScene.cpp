@@ -26,8 +26,6 @@ void SandboxScene::OnEnter()
 
     m_Cube=CreateEntity("cube");
 
-    m_Cube.Set<TransformComponent>({});
-
     m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
 
     // Create cube
@@ -151,8 +149,9 @@ void SandboxScene::OnUpdate(float dt)
     glm::mat4 projection = glm::mat4(1.0f);
 
     //model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-    m_Cube.Get<TransformComponent>().Rotation={0.f, glm::degrees((float)glfwGetTime()), 0.f};
-    model=m_Cube.Get<TransformComponent>().WorldMatrix;
+    //m_Cube.Get<get>().Rotation={0.f, glm::degrees((float)glfwGetTime()), 0.f};
+    m_Cube.SetLocalRotation({0.f, (float)glfwGetTime(), 0.f});
+    model=m_Cube.GetHandle().get_mut<TransformMatrix, World>();
     glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
     view = glm::translate(glm::mat4(1.0f), -viewPos);
     projection = glm::perspective(glm::radians(45.0f), windowSize.GetAspect(), 0.1f, 100.0f);

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <glm/glm.hpp>
 class Entity 
 {
 public:
@@ -15,6 +16,14 @@ public:
     // -------------------------------------------------------
     // Unity-like Hierarchy (Transform)
     // -------------------------------------------------------
+
+    glm::vec3 GetLocalPosition();
+    glm::vec3 GetLocalRotation();
+    glm::vec3 GetLocalScale();
+
+    void SetLocalPosition(const glm::vec3& pos);
+    void SetLocalRotation(const glm::vec3& rot);
+    void SetLocalScale(const glm::vec3& scale);
 
     Entity GetParent() const;
 
