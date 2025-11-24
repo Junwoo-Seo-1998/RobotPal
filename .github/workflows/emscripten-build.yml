@@ -47,4 +47,5 @@ jobs:
             ./build/RobotPal/*.html
             ./build/RobotPal/*.js
             ./build/RobotPal/*.wasm
+            ./build/RobotPal/*.data
           retention-days: 1

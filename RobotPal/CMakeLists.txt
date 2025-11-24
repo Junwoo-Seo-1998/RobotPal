@@ -3,6 +3,15 @@
 #
 include(FetchContent)
 
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY	https://github.com/g-truc/glm.git
+	GIT_TAG 	a532f5b1cf27d6a3c099437e6959cf7e398a0a67 #refs/tags/1.0.2
+)
+
+FetchContent_MakeAvailable(glm)
+
+
 FetchContent_Declare(imgui_external
 	GIT_REPOSITORY "https://github.com/ocornut/imgui.git"
 	GIT_TAG "v1.92.4-docking"
@@ -23,20 +32,63 @@ add_library(imgui STATIC
 
 target_include_directories(imgui PUBLIC ${imgui_external_SOURCE_DIR} ${imgui_external_SOURCE_DIR}/backends/)
 
+
+FetchContent_Declare(
+    tinygltf
+    GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+    GIT_TAG        v2.9.7
+)
+
+set(TINYGLTF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(TINYGLTF_BUILD_TESTS OFF CACHE INTERNAL "")
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "")
+
+FetchContent_MakeAvailable(tinygltf)
+
+
+set(FLECS_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(FLECS_PIC ON CACHE BOOL "" FORCE)          # Position Independent Code
+set(FLECS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(FLECS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FLECS_APP OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    flecs
+    GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
+    GIT_TAG        v4.1.2
+)
+
+FetchContent_MakeAvailable(flecs)
+
+
+
+add_library(glad STATIC ${CMAKE_SOURCE_DIR}/External/glad/src/gles2.c)
+target_include_directories(glad PUBLIC ${CMAKE_SOURCE_DIR}/External/glad/include)
+
+
 file(GLOB_RECURSE ROBOTPAL_SOURCES 
     CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/RobotPal/src/**.cpp"
 )
 add_executable(RobotPal ${ROBOTPAL_SOURCES})
 
+target_compile_definitions(RobotPal PRIVATE GLFW_INCLUDE_NONE)
 
 target_include_directories(RobotPal PUBLIC
    ${CMAKE_SOURCE_DIR}/RobotPal/include
 )
 
+target_link_libraries(RobotPal PRIVATE glm::glm)
+target_link_libraries(RobotPal PRIVATE glad)
+target_link_libraries(RobotPal PRIVATE tinygltf)
+target_link_libraries(RobotPal PRIVATE flecs::flecs_static)
+
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET RobotPal PROPERTY CXX_STANDARD 20)
+  set_property(TARGET RobotPal PROPERTY CXX_STANDARD 17)
 endif()
+
+set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../Assets")
+message(Asset Dir: ${ASSET_DIR})
 
 # 플랫폼에 따라 링크 라이브러리를 다르게 설정합니다.
 if(EMSCRIPTEN)
@@ -59,6 +111,13 @@ if(EMSCRIPTEN)
         "-sALLOW_MEMORY_GROWTH=1"
         "--use-preload-plugins" # 에셋 로딩을 위함
     )
+    target_link_options(RobotPal PRIVATE
+        "SHELL:--preload-file ${ASSET_DIR}@/Assets"
+    )
+
+    target_link_options(RobotPal PRIVATE
+        "SHELL:-sSTACK_SIZE=8388608"
+    )
 else()
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -79,6 +138,13 @@ else()
     # (참고: 네이티브 빌드 시 glfw 타겟은 Linux에서 X11 등을 자동으로 찾아 링크합니다)
     target_link_libraries(imgui PRIVATE glfw OpenGL::GL)
     target_link_libraries(RobotPal PRIVATE glfw OpenGL::GL imgui)
+
+    add_custom_command(TARGET RobotPal POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${ASSET_DIR}
+        $<TARGET_FILE_DIR:RobotPal>/Assets
+        COMMENT "Copying Assets to output directory..."
+    )
 
     # 6. Linux 전용 X11 라이브러리 처리
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
