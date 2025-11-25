@@ -4,13 +4,29 @@
 
 TransformSystemModule::TransformSystemModule(flecs::world &world)
 {
+    world.module<TransformSystemModule>();
+
+    world.component<Position>("Position");
+    world.component<Rotation>("Rotation");
+    world.component<Scale>("Scale");
+    world.component<TransformMatrix>("TransformMatrix");
+    world.component<Local>("Local");
+    world.component<World>("World");
+
+    RegisterObserver(world);
     RegisterSystem(world);
+}
+
+void TransformSystemModule::RegisterObserver(flecs::world &world)
+{
+    // world set 설정하기
 }
 
 void TransformSystemModule::RegisterSystem(flecs::world &world)
 {
     // 1. 템플릿 없이 기본 빌더 사용
     auto update_local = world.system<const Position, const Rotation, const Scale, TransformMatrix>()
+    .kind(flecs::OnUpdate)
     .term_at(0).second<Local>() // (Position, Local)
     .term_at(1).second<Local>() // (Rotation, Local)
     .term_at(2).second<Local>() // (Scale, Local)
@@ -24,6 +40,7 @@ void TransformSystemModule::RegisterSystem(flecs::world &world)
 
     // 부모 월드 행렬 * 내 로컬 행렬 = 내 월드 행렬
     auto update_world = world.system<const TransformMatrix, const TransformMatrix*, TransformMatrix>()
+    .kind(flecs::OnUpdate)
     .term_at(0).second<Local>()   // 내 로컬 행렬 (Input)
     .term_at(1).second<World>()   // 부모의 월드 행렬 (Input)
     .term_at(2).second<World>()   // 내 월드 행렬 (Output)

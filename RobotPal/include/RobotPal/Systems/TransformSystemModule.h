@@ -5,6 +5,7 @@ struct TransformSystemModule{
 public:
     TransformSystemModule(flecs::world &world);
 private:
+    void RegisterObserver(flecs::world& world);
     void RegisterSystem(flecs::world& world);
 };
 
