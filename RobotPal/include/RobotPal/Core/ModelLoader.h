@@ -12,7 +12,7 @@ public:
 
 private:
     static void ProcessNode(Scene* scene, flecs::entity parent, tinygltf::Model& model, tinygltf::Node& node);
-    static std::shared_ptr<Mesh> ProcessMesh(tinygltf::Model& model, const tinygltf::Primitive& primitive, const std::string& name);
+    static PrimitiveData ProcessMesh(tinygltf::Model& model, const tinygltf::Primitive& primitive, const std::string& name);
 };
 
 #endif
