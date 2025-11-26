@@ -100,9 +100,9 @@ private:
 class VertexBuffer 
 {
 public:
-    static std::shared_ptr<VertexBuffer> Create(float* vertices, uint32_t byteSize);
+    static std::shared_ptr<VertexBuffer> Create(void* vertices, uint32_t byteSize);
     static std::shared_ptr<VertexBuffer> Create(uint32_t byteSize);
-    VertexBuffer(float* vertices, uint32_t byteSize);
+    VertexBuffer(void* vertices, uint32_t byteSize);
     VertexBuffer(uint32_t byteSize);
     ~VertexBuffer();
 
@@ -121,8 +121,8 @@ private:
 class IndexBuffer
 {
 public:
-    static std::shared_ptr<IndexBuffer> Create(uint32_t* indices, uint32_t count);
-    IndexBuffer(uint32_t* indices, uint32_t count);
+    static std::shared_ptr<IndexBuffer> Create(void* indices, uint32_t count);
+    IndexBuffer(void* indices, uint32_t count);
     ~IndexBuffer();
 
     void Bind() const;
