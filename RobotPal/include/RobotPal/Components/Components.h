@@ -1,5 +1,7 @@
 #ifndef __COMPONENTS_H__
 #define __COMPONENTS_H__
+#include "RobotPal/Core/ResourceID.h"
+#include "RobotPal/Core/GraphicsTypes.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -42,5 +44,16 @@ struct Local
 {};
 struct World
 {};
+
+
+struct MeshFilter 
+{
+    ResourceID meshID;
+};
+
+struct MeshRenderer {
+    std::shared_ptr<Material> material;
+    // bool castShadows = true;
+};
 
 #endif

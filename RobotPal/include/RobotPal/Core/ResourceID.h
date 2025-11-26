@@ -1,10 +1,11 @@
 // StringUtils.h
-#pragma once
+#ifndef __RESOURCEID_H__
+#define __RESOURCEID_H__
 #include <string>
 
-using ResourceID = unsigned int; // 32비트 정수
+using ResourceID = int;
 
-constexpr ResourceID HashString(const char* str) {
+constexpr ResourceID GetID(const char* str) {
     // FNV-1a Hash Algorithm (Compile-time if possible)
     ResourceID hash = 2166136261u;
     while (*str) {
@@ -15,6 +16,8 @@ constexpr ResourceID HashString(const char* str) {
 }
 
 // std::string 오버로딩
-inline ResourceID HashString(const std::string& str) {
-    return HashString(str.c_str());
+inline ResourceID GetID(const std::string& str) {
+    return GetID(str.c_str());
 }
+
+#endif

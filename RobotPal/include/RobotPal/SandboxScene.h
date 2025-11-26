@@ -20,20 +20,7 @@ public:
 
     void OnImGuiRender() override;
 private:
-    // 재귀 렌더링을 위한 헬퍼 함수
-    void RenderNode(const NodeData& node, const glm::mat4& parentTransform, const ModelResource& modelRes);
-
-private:
     Entity m_Center;
-    
-    // 쉐이더
-    std::shared_ptr<Shader> m_CubeShader;
-    
-    // 모델의 모든 메쉬에 대한 VAO 목록 (인덱스로 접근)
-    std::vector<std::shared_ptr<VertexArray>> m_MeshVAOs;
-
-    glm::vec4 m_CubeColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    WindowData m_WindowSize{}; // 윈도우 크기 저장용
 };
 
 #endif

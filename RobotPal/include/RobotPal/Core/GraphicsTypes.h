@@ -53,6 +53,7 @@ struct SubMeshInfo {
 
 // [3] 메쉬 데이터 (유니티의 Mesh 에셋)
 struct MeshData {
+    int uniqueID=-1;
     std::string name;
     
     // 정점 데이터 (모든 서브메쉬의 정점을 하나로 합침)
@@ -63,7 +64,8 @@ struct MeshData {
     std::vector<SubMeshInfo> subMeshes;
 
     // GPU 핸들 (나중에 업로드 후 채워짐)
-    unsigned int vao = 0, vbo = 0, ebo = 0;
+    // GPU 핸들 보관 todo
+    std::shared_ptr<VertexArray> vao;
 };
 
 struct NodeData {
@@ -113,13 +115,5 @@ struct Mesh {
 };
 
 
-struct MeshFilter {
-    std::shared_ptr<Mesh> mesh; 
-};
-
-struct MeshRenderer {
-    std::shared_ptr<Material> material;
-    // bool castShadows = true;
-};
 
 #endif
