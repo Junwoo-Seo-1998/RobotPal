@@ -23,10 +23,6 @@ void SandboxScene::OnEnter()
     g_RobotEntity = CreateEntity("mainModel");
     g_RobotEntity.GetHandle().is_a(modelPrefab);
 
-    g_RobotEntity.Set<Position>({0.0f, 0.0f, 0.0f});
-    g_RobotEntity.Set<Rotation>({0.0f, 0.0f, 0.0f}); // 초기 회전 0
-    g_RobotEntity.Set<Scale>({1.0f, 1.0f, 1.0f});
-    g_RobotEntity.Set<TransformMatrix>(glm::mat4(1.0f));
     // 4. 드라이버 연결 (SimDriver 사용)
     bool useRealRobot = false; // [설정] true면 실제 로봇 모드
 
@@ -70,10 +66,7 @@ void SandboxScene::OnUpdate(float dt)
     // TransformSystemModule이 계산해둔 행렬을 가져옴
     glm::mat4 rootTransform = glm::mat4(1.0f);
     
-    if (g_RobotEntity.IsValid() && g_RobotEntity.Has<TransformMatrix>()) {
-        // GetPtr로 행렬 데이터를 가져와서 사용
-        rootTransform = *g_RobotEntity.GetPtr<TransformMatrix>();
-    }
+   
 
     // 모델 그리기
     // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");
