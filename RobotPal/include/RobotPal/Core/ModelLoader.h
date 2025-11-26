@@ -8,13 +8,13 @@
 
 class ModelLoader {
 public:
-    static bool ModelLoader::LoadModelData(const std::string& path, ModelResource& outResource);
+    static bool LoadModelData(const std::string& path, ModelResource& outResource);
 
 private:
-    static int ModelLoader::ProcessNodeRecursive(tinygltf::Model& model, const tinygltf::Node& gltfNode, int parentIdx, ModelResource& outResource);
+    static int ProcessNodeRecursive(tinygltf::Model& model, const tinygltf::Node& gltfNode, int parentIdx, ModelResource& outResource);
 
     static PrimitiveData ExtractPrimitiveData(tinygltf::Model &model, const tinygltf::Primitive &primitive);
-    static MeshData ModelLoader::ProcessMesh(tinygltf::Model& model, const tinygltf::Mesh& gltfMesh);
+    static MeshData ProcessMesh(tinygltf::Model& model, const tinygltf::Mesh& gltfMesh);
 };
 
 #endif
