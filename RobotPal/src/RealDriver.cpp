@@ -1,29 +1,60 @@
-#pragma once
-#include "RobotPal/RobotDriver.h"
-#include "RobotPal/TcpServer.h"
-#include <glm/gtc/matrix_transform.hpp>
-#include <string>
+#include "RobotPal/RealController.h"
+#include "RobotPal/Components/Components.h"
+#include <cstdio>
+#include <iostream>
+#include <cmath>
 
-class RealDriver : public IRobotDriver
+RealController::RealController(Entity entity, int port)
+    : m_Entity(entity), m_Port(port)
 {
-public:
-    RealDriver(int port);
-    virtual ~RealDriver() = default;
+}
 
-    virtual bool Init() override;
-    virtual void Drive(float v, float w) override;
-    virtual void Update(float dt) override;
-    virtual glm::mat4 GetTransform() const override;
+bool RealController::Init()
+{
+    if (!m_Server.Start(m_Port)) {
+        std::cout << ">>> [RealController] Server Start Failed!" << std::endl;
+        return false;
+    }
+    return true;
+}
 
-private:
-    TcpServer m_Server;
-    int m_Port;
+void RealController::Move(float v, float w)
+{
+    // 중복 전송 방지
+    if (std::abs(m_LastV - v) > 0.001f || std::abs(m_LastW - w) > 0.001f)
+    {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "CMD:%.2f,%.2f", v, w);
+        m_Server.Send(std::string(buf));
+        m_LastV = v;
+        m_LastW = w;
+    }
+}
 
-    // 중복 전송 방지용 캐시
-    float m_LastV = 0.0f;
-    float m_LastW = 0.0f;
+void RealController::Update(float dt)
+{
+    m_Server.Update();
 
-    // 실제 로봇으로부터 수신한 위치 (Visual Sync용)
-    glm::vec3 m_RealPos = {0.0f, 0.0f, 0.0f};
-    float m_RealYaw = 0.0f;
-};
+    if (m_Server.isConnected())
+    {
+        std::string msg = m_Server.GetLastReceivedData();
+        if (!msg.empty())
+        {
+            float x, z, yaw;
+            if (sscanf(msg.c_str(), "STATE:x=%f,y=%f,yaw=%f", &x, &z, &yaw) == 3)
+            {
+                // 데이터 동기화 (Visual Sync)
+                if (m_Entity.IsValid()) {
+                    auto* pos = m_Entity.GetPtr<Position>();
+                    auto* rot = m_Entity.GetPtr<Rotation>();
+                    
+                    if (pos && rot) {
+                        pos->x = x;
+                        pos->z = z;
+                        rot->y = yaw;
+                    }
+                }
+            }
+        }
+    }
+}
