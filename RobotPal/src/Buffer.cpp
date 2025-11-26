@@ -1,7 +1,7 @@
 #include "RobotPal/Buffer.h"
 #include <glad/gles2.h>
 
-std::shared_ptr<VertexBuffer> VertexBuffer::Create(float *vertices, uint32_t byteSize)
+std::shared_ptr<VertexBuffer> VertexBuffer::Create(void *vertices, uint32_t byteSize)
 {
     return std::make_shared<VertexBuffer>(vertices, byteSize);
 }
@@ -11,7 +11,7 @@ std::shared_ptr<VertexBuffer> VertexBuffer::Create(uint32_t byteSize)
     return std::make_shared<VertexBuffer>(byteSize);
 }
 
-VertexBuffer::VertexBuffer(float *vertices, uint32_t byteSize)
+VertexBuffer::VertexBuffer(void *vertices, uint32_t byteSize)
 {
     glGenBuffers(1, &m_Buffer);
     glBindBuffer(GL_ARRAY_BUFFER, m_Buffer);
@@ -56,12 +56,12 @@ void VertexBuffer::SetLayout(const BufferLayout &layout)
     m_Layout = layout;
 }
 
-std::shared_ptr<IndexBuffer> IndexBuffer::Create(uint32_t *indices, uint32_t count)
+std::shared_ptr<IndexBuffer> IndexBuffer::Create(void *indices, uint32_t count)
 {
     return std::make_shared<IndexBuffer>(indices, count);
 }
 
-IndexBuffer::IndexBuffer(uint32_t *indices, uint32_t count)
+IndexBuffer::IndexBuffer(void *indices, uint32_t count)
     : m_Count(count)
 {
     glGenBuffers(1, &m_Buffer);

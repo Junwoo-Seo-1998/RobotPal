@@ -208,7 +208,7 @@ PrimitiveData ModelLoader::ExtractPrimitiveData(tinygltf::Model &model, const ti
     }
 
     // =============================================================
-    // 2. Index Processing (새로 추가됨)
+    // 2. Index Processing
     // =============================================================
     if (primitive.indices >= 0) {
         const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
@@ -242,7 +242,7 @@ PrimitiveData ModelLoader::ExtractPrimitiveData(tinygltf::Model &model, const ti
         // 인덱스가 없는 경우(드물지만), 0, 1, 2... 순서대로 생성해야 그릴 수 있음
         // Primitive Mode가 TRIANGLES라고 가정
         cout << "WARNING: No Indices found. Generating sequential indices.\n";
-        for(size_t i=0; i<vertexCount; ++i) {
+        for(int i=0; i<vertexCount; ++i) {
             data.indices.push_back(i);
         }
     }

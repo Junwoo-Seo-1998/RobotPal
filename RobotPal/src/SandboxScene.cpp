@@ -1,93 +1,74 @@
 #include "RobotPal/SandboxScene.h"
-#include "RobotPal/Shader.h"
-#include "RobotPal/VertexArray.h"
 #include "RobotPal/Buffer.h"
+#include "RobotPal/GlobalComponents.h"
+#include "RobotPal/Core/AssetManager.h"
+#include "RobotPal/Components/Components.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp> // [중요] 쿼터니언 -> 행렬 변환용
 #include <imgui.h>
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
-#include "RobotPal/GlobalComponents.h"
-#include "RobotPal/Core/ModelLoader.h"
 #include <iostream>
-#include "RobotPal/Components/Components.h"
-#include "RobotPal/Entity.h"
-WindowData windowSize;
+
 void SandboxScene::OnEnter()
 {
+    // 1. 윈도우 리사이즈 이벤트 구독
     m_World.observer<const WindowData>("OnResize")
-        .event(flecs::OnSet) // 값이 set 되었을 때
-        .each([](const WindowData &win)
-              {
+        .event(flecs::OnSet)
+        .each([this](const WindowData &win) {
             std::cout << "화면 크기가 변경됨! " << win.width << "x" << win.height << std::endl;
-            windowSize=win; });
-            
-    ModelResource model;
-    ModelLoader::LoadModelData("./Assets/jetank.glb", model);
+            m_WindowSize = win; 
+        });
 
-    m_Center=CreateEntity("center");
-    m_Center.SetLocalScale(glm::vec3{0.3f});
-    m_Cube=CreateEntity("cube");
-    m_Center.AddChild(m_Cube);
-    m_Cube.SetLocalPosition({1.5f, 0.f, 0.f});
-    m_Cube.SetLocalScale(glm::vec3{0.3f});
+    // 2. 모델 로드
+    auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");
+    if(!modelRes) {
+        std::cout << "ERROR: Failed to load model!" << std::endl;
+        return;
+    }
 
-    m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
+    // 3. 모든 메쉬에 대해 VAO 생성 (한 번만 수행)
+    m_MeshVAOs.clear();
+    m_MeshVAOs.resize(modelRes->meshes.size());
 
-    // Create cube
-    m_CubeVA = VertexArray::Create();
-
-    float vertices[] = {
-        // positions          // normals
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
-    auto vertexBuffer = std::make_shared<VertexBuffer>(vertices, sizeof(vertices));
-
+    // Vertex 구조체와 일치하는 레이아웃
     BufferLayout layout = {
         {DataType::Float3, "a_Position"},
-        {DataType::Float3, "a_Normal"}};
-    vertexBuffer->SetLayout(layout);
-    m_CubeVA->AddVertexBuffer(vertexBuffer);
+        {DataType::Float3, "a_Normal"},
+        {DataType::Float2, "a_TexCoord"},
+        {DataType::Float3, "a_Tangent"},
+        {DataType::Int4,   "a_BoneIDs"},
+        {DataType::Float4, "a_Weights"}
+    };
 
+    for(size_t i = 0; i < modelRes->meshes.size(); ++i) {
+        MeshData& meshData = modelRes->meshes[i];
+        
+        auto va = VertexArray::Create();
+        
+        // VBO
+        auto vb = std::make_shared<VertexBuffer>(
+            meshData.vertices.data(), 
+            meshData.vertices.size() * sizeof(Vertex)
+        );
+        vb->SetLayout(layout);
+        va->AddVertexBuffer(vb);
+
+        // IBO
+        auto ib = IndexBuffer::Create(meshData.indices.data(), meshData.indices.size());
+        va->SetIndexBuffer(ib);
+
+        m_MeshVAOs[i] = va; // 저장
+    }
+
+    // 4. 테스트용 엔티티 (중심축용)
+    m_Center = CreateEntity("center");
+    m_Center.SetLocalScale(glm::vec3{1.0f});
+    m_CubeColor = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+
+    // 5. 쉐이더 생성
     std::string vertexSrc = R"(#version 300 es
         precision mediump float;
         layout(location = 0) in vec3 a_Position;
@@ -103,6 +84,7 @@ void SandboxScene::OnEnter()
         void main()
         {
             v_FragPos = vec3(u_Model * vec4(a_Position, 1.0));
+            // 법선 행렬 (Scale 보정)
             v_Normal = mat3(transpose(inverse(u_Model))) * a_Normal;
             gl_Position = u_Projection * u_View * vec4(v_FragPos, 1.0);
         }
@@ -120,75 +102,102 @@ void SandboxScene::OnEnter()
 
         void main()
         {
-            vec3 lightPos = vec3(1.2, 1.0, 2.0);
+            vec3 lightPos = vec3(5.0, 10.0, 5.0);
             
             // Ambient
-            float ambientStrength = 0.1;
-            vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
+            float ambientStrength = 0.3;
+            vec3 ambient = ambientStrength * vec3(1.0);
 
             // Diffuse
             vec3 norm = normalize(v_Normal);
             vec3 lightDir = normalize(lightPos - v_FragPos);
             float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+            vec3 diffuse = diff * vec3(1.0);
 
-            // Specular
-            float specularStrength = 0.5;
-            vec3 viewDir = normalize(u_ViewPos - v_FragPos);
-            vec3 reflectDir = reflect(-lightDir, norm);
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-            vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
-
-            vec3 result = (ambient + diffuse + specular) * u_Color.rgb;
+            vec3 result = (ambient + diffuse) * u_Color.rgb;
             color = vec4(result, u_Color.a);
         }
     )";
 
-    m_CubeShader = Shader::CreateFromSource("PhongCube", vertexSrc, fragmentSrc);
+    m_CubeShader = Shader::CreateFromSource("PhongShader", vertexSrc, fragmentSrc);
 }
 
 void SandboxScene::OnUpdate(float dt)
 {
-    // Create transformations
-    glm::mat4 model = glm::mat4(1.0f);
-    glm::mat4 view = glm::mat4(1.0f);
-    glm::mat4 projection = glm::mat4(1.0f);
+    if (!m_CubeShader) return;
+    auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");
+    if (!modelRes || modelRes->nodes.empty()) return;
 
-    //model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-    //m_Cube.Get<get>().Rotation={0.f, glm::degrees((float)glfwGetTime()), 0.f};
-    m_Center.SetLocalRotation({(float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()});
+    // 1. 카메라 행렬 설정
+    glm::vec3 viewPos = glm::vec3(0.0f, 0.5f, 1.0f); 
+    glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0,0,0), glm::vec3(0,1,0));
     
-    model=m_Cube.GetHandle().get_mut<TransformMatrix, World>();
-    glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    view = glm::translate(glm::mat4(1.0f), -viewPos);
-    projection = glm::perspective(glm::radians(45.0f), windowSize.GetAspect(), 0.1f, 100.0f);
+    float aspect = m_WindowSize.GetAspect();
+    if(aspect == 0.0f) aspect = 1.77f; // 안전장치
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-    // Draw the cube
+    // 2. 쉐이더 공통 유니폼 설정
     m_CubeShader->Bind();
-    m_CubeShader->SetMat4("u_Model", model);
     m_CubeShader->SetMat4("u_View", view);
     m_CubeShader->SetMat4("u_Projection", projection);
     m_CubeShader->SetFloat4("u_Color", m_CubeColor);
     m_CubeShader->SetFloat3("u_ViewPos", viewPos);
 
-    m_CubeVA->Bind();
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    // 3. 모델 전체 회전 (World Matrix)
+    // 시간이 지남에 따라 Y축 회전
+    glm::mat4 rootTransform = glm::rotate(glm::mat4(1.0f), (float)glfwGetTime(), glm::vec3(0, 1, 0));
 
-    model = m_Center.GetHandle().get_mut<TransformMatrix, World>();
-    m_CubeShader->SetMat4("u_Model", model);
-    m_CubeShader->SetFloat4("u_Color", {1.f, 0.f ,0.f, 1.f});
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    // 4. 루트 노드부터 재귀적 렌더링 시작
+    RenderNode(modelRes->nodes[modelRes->rootNodeIndex], rootTransform, *modelRes);
+}
+
+void SandboxScene::RenderNode(const NodeData& node, const glm::mat4& parentTransform, const ModelResource& modelRes)
+{
+    // A. Local Transform 계산 (TRS)
+    glm::mat4 translate = glm::translate(glm::mat4(1.0f), node.translation);
+    glm::mat4 rotate = glm::mat4_cast(glm::quat(node.rotation));
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), node.scale);
+    
+    glm::mat4 localTransform = translate * rotate * scale;
+
+    // B. Global Transform 계산 (Parent * Local)
+    glm::mat4 globalTransform = parentTransform * localTransform;
+
+    // C. 메쉬 그리기 (현재 노드가 메쉬를 가지고 있다면)
+    if (node.meshIndex >= 0 && node.meshIndex < m_MeshVAOs.size()) {
+        
+        m_CubeShader->SetMat4("u_Model", globalTransform);
+
+        // 해당 메쉬의 VAO 바인딩
+        auto& va = m_MeshVAOs[node.meshIndex];
+        va->Bind();
+
+        // 서브메쉬 단위로 그리기
+        const auto& meshData = modelRes.meshes[node.meshIndex];
+        for (const auto& sub : meshData.subMeshes) {
+            glDrawElements(GL_TRIANGLES, 
+                           sub.indexCount, 
+                           GL_UNSIGNED_INT, 
+                           (void*)(sub.indexStart * sizeof(uint32_t)));
+        }
+    }
+
+    // D. 자식 노드 순회 (현재 계산된 행렬을 부모 행렬로 넘김)
+    for (int childIdx : node.childrenIndices) {
+        RenderNode(modelRes.nodes[childIdx], globalTransform, modelRes);
+    }
 }
 
 void SandboxScene::OnExit()
 {
-    m_CubeVA = nullptr;
+    m_MeshVAOs.clear();
     m_CubeShader = nullptr;
 }
 
 void SandboxScene::OnImGuiRender()
 {
-    ImGui::Begin("Cube Color");
-    ImGui::ColorEdit4("Color", &m_CubeColor.x);
+    ImGui::Begin("Settings");
+    ImGui::ColorEdit4("Model Color", &m_CubeColor.x);
+    ImGui::Text("Mesh Count: %d", (int)m_MeshVAOs.size());
     ImGui::End();
 }
