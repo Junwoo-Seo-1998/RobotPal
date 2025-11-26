@@ -28,7 +28,6 @@ void SandboxScene::OnExit()
 {
 
 }
-
 void SandboxScene::OnImGuiRender()
 {
     ImGui::Begin("MainModel Hierarchy"); // 창 이름 변경
