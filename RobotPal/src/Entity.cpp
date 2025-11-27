@@ -58,3 +58,27 @@ std::vector<Entity> Entity::GetChildren() const
     }
     return children;
 }
+Entity Entity::FindChildByNameRecursive(flecs::entity parent, const std::string &targetName)
+{
+    flecs::entity found = flecs::entity::null();
+
+    // parent의 모든 직계 자식을 순회
+    parent.children([&](flecs::entity child)
+                    {
+        // 이미 찾았다면 더 이상 수행하지 않고 리턴
+        if (found != flecs::entity::null()) return;
+
+        // 1. 이름 확인
+        if (child.name().c_str() == targetName) {
+            found = child;
+            return;
+        }
+
+        // 2. 못 찾았다면, 해당 자식의 자식들을 재귀적으로 탐색
+        flecs::entity res = FindChildByNameRecursive(child, targetName);
+        if (res != flecs::entity::null()) {
+            found = res;
+        } });
+
+    return found;
+}

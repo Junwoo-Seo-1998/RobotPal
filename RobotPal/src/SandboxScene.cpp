@@ -19,18 +19,28 @@ void SandboxScene::OnEnter()
     auto prefabEntity = CreateEntity("mainModel");
     prefabEntity.GetHandle().is_a(modelPrefab);
 
-    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, 45.f, 0.f)));
+    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, 0.f, 0.f)));
+
+    auto prefabEntity2 = CreateEntity("mainModel2");
+    prefabEntity2.GetHandle().is_a(modelPrefab);
+    prefabEntity2.SetLocalPosition({0.3f, 0.f, 0.3f});
+
 
     auto mainCam=CreateEntity("mainCam");
     mainCam.Set<Camera>({});
     mainCam.SetLocalPosition({0.0f, 0.5f, 1.0f});
 
-    camView=Framebuffer::Create(200, 200);
+    camView=Framebuffer::Create(400, 400);
     auto robotCamera=CreateEntity("robotCam");
-    robotCamera.Set<Camera>({})
+    robotCamera.Set<Camera>({80.f, 0.001f, 100.f})
                .Set<RenderTarget>({camView});
-
-    robotCamera.SetLocalPosition({0.0f, 0.5f, 1.0f});
+    
+    auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
+    if(attachPoint)
+    {
+        robotCamera.SetParent(attachPoint);
+    }
+    
 }  
 
 void SandboxScene::OnUpdate(float dt)
@@ -47,7 +57,7 @@ void SandboxScene::OnExit()
 void SandboxScene::OnImGuiRender()
 {
     ImGui::Begin("robotCam");
-    ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(200, 200), ImVec2(0, 0), ImVec2(1, -1));
+    ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
     ImGui::End();
 
     // 창 이름을 전체를 아우르는 이름으로 변경하면 좋습니다.
