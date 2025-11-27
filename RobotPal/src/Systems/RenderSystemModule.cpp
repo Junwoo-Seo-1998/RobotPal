@@ -2,6 +2,7 @@
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Core/AssetManager.h"
 #include <glad/gles2.h>
+
 RenderSystemModule::RenderSystemModule(flecs::world &world)
 {
     std::string vertexSrc = R"(#version 300 es
@@ -58,61 +59,131 @@ RenderSystemModule::RenderSystemModule(flecs::world &world)
 
     world.module<RenderSystemModule>();
 
-
     // 1. 윈도우 리사이즈 이벤트 구독
     world.observer<const WindowData>("OnResize")
         .event(flecs::OnSet)
         .each([this](const WindowData &win)
-        {
+              {
             //std::cout << "화면 크기가 변경됨! " << win.width << "x" << win.height << std::endl;
-            m_WindowSize = win; 
-        });
-
+            m_WindowSize = win; });
 
     RegisterSystem(world);
-
-
 }
 
 void RenderSystemModule::RegisterSystem(flecs::world &world)
 {
-    world.system<const MeshFilter, const MeshRenderer, const TransformMatrix>("RenderSystem")
-    .kind(flecs::OnStore)
-    .term_at(2).second<World>()
-    .each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
-    {
-        // 1. 카메라 행렬 설정
-        glm::vec3 viewPos = glm::vec3(0.0f, 0.5f, 1.0f);
-        glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    renderQuery =
+        world.query_builder<const MeshFilter, const MeshRenderer, const TransformMatrix>()
+            .cached()
+            .term_at(2)
+            .second<World>()
+            .build();
 
-        float aspect = m_WindowSize.GetAspect();
-        if (aspect == 0.0f)
-            aspect = 1.77f; // 안전장치
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+    world.system<const Camera, const TransformMatrix, const RenderTarget *>("RenderSystem")
+        .kind(flecs::OnStore)
+        .term_at(1)
+        .second<World>()
+        .term_at(2)
+        .optional()
+        .each([&](flecs::entity camEnt, const Camera &cam, const TransformMatrix &cameraWorldMatrix, const RenderTarget *target)
+              {
+        // --- [A] 렌더 타겟 설정 (어디에 그릴지) ---
 
-        // 2. 쉐이더 공통 유니폼 설정
+        float aspect = 1.77f; // 안전장치
+                       
+        if (target && target->fbo) {
+            target->fbo->Bind();
+            glViewport(0, 0, target->fbo->GetWidth(), target->fbo->GetHeight());
+            aspect=(float)target->fbo->GetWidth() / target->fbo->GetHeight();
+        } else {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, (int)m_WindowSize.width, (int)m_WindowSize.height);
+            aspect=m_WindowSize.GetAspect();
+        }
+
+        if(aspect==0.0f)
+            aspect=1.77f;
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // 화면 비우기
+
+        glm::mat4 viewMatrix = glm::inverse(cameraWorldMatrix);
+        glm::vec3 viewPos = glm::vec3(cameraWorldMatrix[3]);
+        
+        glm::mat4 projection = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
+
+        // 쉐이더 바인딩 및 '공통 유니폼' 설정 (카메라 당 1회)
         m_SimpleShader->Bind();
-        m_SimpleShader->SetMat4("u_View", view);
+        m_SimpleShader->SetMat4("u_View", viewMatrix);
         m_SimpleShader->SetMat4("u_Projection", projection);
-        m_SimpleShader->SetFloat4("u_Color", {0.8f, 0.8f, 0.8f, 1.f});
+        m_SimpleShader->SetFloat4("u_Color", {0.8f, 0.8f, 0.8f, 1.f}); // 조명색 등
         m_SimpleShader->SetFloat3("u_ViewPos", viewPos);
 
-        // C. 메쉬 그리기
+
+        // --- [C] 세상의 모든 메쉬 그리기 (Nested Loop) ---
+        // 여기서 아까 만들어둔 renderQuery를 돌립니다.
+        // 기존 코드의 'C. 메쉬 그리기' 부분이 여기 들어옵니다.
+        
+        if(renderQuery)
         {
-            m_SimpleShader->SetMat4("u_Model", tm);
-
-            // 해당 메쉬의 VAO 바인딩
-            auto meshData = AssetManager::Get().GetMesh(mf.meshID);
-            meshData->vao->Bind();
-
-            // 서브메쉬 단위로 그리기
-            for (const auto &sub : meshData->subMeshes)
+            renderQuery.each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
             {
-                glDrawElements(GL_TRIANGLES,
-                            sub.indexCount,
-                            GL_UNSIGNED_INT,
-                            (void *)(sub.indexStart * sizeof(uint32_t)));
-            }
+                m_SimpleShader->SetMat4("u_Model", tm);
+
+                // 해당 메쉬의 VAO 바인딩
+                auto meshData = AssetManager::Get().GetMesh(mf.meshID);
+                meshData->vao->Bind();
+
+                // 서브메쉬 단위로 그리기
+                for (const auto &sub : meshData->subMeshes)
+                {
+                    glDrawElements(GL_TRIANGLES,
+                                sub.indexCount,
+                                GL_UNSIGNED_INT,
+                                (void *)(sub.indexStart * sizeof(uint32_t)));
+                }
+            });
         }
+        // 타겟 언바인딩 (필요시)
+        if (target && target->fbo) target->fbo->Unbind(); 
     });
+
+    // // //todo: handle frame buffers
+    // world.system<const MeshFilter, const MeshRenderer, const TransformMatrix>("RenderSystem")
+    // .term_at(2).second<World>()
+    // .each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
+    // {
+    //     // 1. 카메라 행렬 설정
+    //     glm::vec3 viewPos = glm::vec3(0.0f, 0.5f, 1.0f);
+    //     glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
+    //     float aspect = m_WindowSize.GetAspect();
+    //     if (aspect == 0.0f)
+    //         aspect = 1.77f; // 안전장치
+    //     glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+
+    //     // 2. 쉐이더 공통 유니폼 설정
+    //     m_SimpleShader->Bind();
+    //     m_SimpleShader->SetMat4("u_View", view);
+    //     m_SimpleShader->SetMat4("u_Projection", projection);
+    //     m_SimpleShader->SetFloat4("u_Color", {0.8f, 0.8f, 0.8f, 1.f});
+    //     m_SimpleShader->SetFloat3("u_ViewPos", viewPos);
+
+    //     // C. 메쉬 그리기
+    //     {
+    //         m_SimpleShader->SetMat4("u_Model", tm);
+
+    //         // 해당 메쉬의 VAO 바인딩
+    //         auto meshData = AssetManager::Get().GetMesh(mf.meshID);
+    //         meshData->vao->Bind();
+
+    //         // 서브메쉬 단위로 그리기
+    //         for (const auto &sub : meshData->subMeshes)
+    //         {
+    //             glDrawElements(GL_TRIANGLES,
+    //                         sub.indexCount,
+    //                         GL_UNSIGNED_INT,
+    //                         (void *)(sub.indexStart * sizeof(uint32_t)));
+    //         }
+    //     }
+    // });
 }

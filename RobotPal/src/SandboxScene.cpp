@@ -11,7 +11,8 @@
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-
+#include <memory>
+std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
@@ -19,7 +20,17 @@ void SandboxScene::OnEnter()
     prefabEntity.GetHandle().is_a(modelPrefab);
 
     prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, 45.f, 0.f)));
-    
+
+    auto mainCam=CreateEntity("mainCam");
+    mainCam.Set<Camera>({});
+    mainCam.SetLocalPosition({0.0f, 0.5f, 1.0f});
+
+    camView=Framebuffer::Create(200, 200);
+    auto robotCamera=CreateEntity("robotCam");
+    robotCamera.Set<Camera>({})
+               .Set<RenderTarget>({camView});
+
+    robotCamera.SetLocalPosition({0.0f, 0.5f, 1.0f});
 }  
 
 void SandboxScene::OnUpdate(float dt)
@@ -34,6 +45,10 @@ void SandboxScene::OnExit()
 
 void SandboxScene::OnImGuiRender()
 {
+    ImGui::Begin("robotCam");
+    ImGui::Image((void*)(intptr_t)camView->GetID(), ImVec2(200, 200), ImVec2(0, 0), ImVec2(1, -1));
+    ImGui::End();
+
     // 창 이름을 전체를 아우르는 이름으로 변경하면 좋습니다.
     ImGui::Begin("Scene Graph & Inspector");
 

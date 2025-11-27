@@ -20,7 +20,7 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Systems/RenderSystemModule.h"
 #include "RobotPal/Systems/TransformSystemModule.h"
-
+#include "RobotPal/Core/Texture.h"
 void EngineApp::Run()
 {
     Init();
@@ -102,6 +102,7 @@ void EngineApp::MainLoop()
 
 void EngineApp::Shutdown()
 {
+    Texture::CleanUpStaticResources();
     AssetManager::Get().ClearData();
     ImGuiManager::Get().Shutdown();
     m_Window->Shutdown();
