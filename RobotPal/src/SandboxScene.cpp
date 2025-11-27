@@ -19,11 +19,11 @@ void SandboxScene::OnEnter()
     auto prefabEntity = CreateEntity("mainModel");
     prefabEntity.GetHandle().is_a(modelPrefab);
 
-    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, 0.f, 0.f)));
+    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -135.f, 0.f)));
 
     auto prefabEntity2 = CreateEntity("mainModel2");
     prefabEntity2.GetHandle().is_a(modelPrefab);
-    prefabEntity2.SetLocalPosition({0.3f, 0.f, 0.3f});
+    prefabEntity2.SetLocalPosition({0.2f, 0.f, 0.2f});
 
 
     auto mainCam=CreateEntity("mainCam");
@@ -32,7 +32,7 @@ void SandboxScene::OnEnter()
 
     camView=Framebuffer::Create(400, 400);
     auto robotCamera=CreateEntity("robotCam");
-    robotCamera.Set<Camera>({80.f, 0.001f, 100.f})
+    robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
                .Set<RenderTarget>({camView});
     
     auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
