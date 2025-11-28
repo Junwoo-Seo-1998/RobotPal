@@ -3,6 +3,8 @@
 #
 include(FetchContent)
 
+
+
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
@@ -118,6 +120,10 @@ if(EMSCRIPTEN)
         "-sFULL_ES3=1"          # WebGL 2에 OpenGL ES 3 사용
         "-sALLOW_MEMORY_GROWTH=1"
         "--use-preload-plugins" # 에셋 로딩을 위함
+    )
+    target_link_options(RobotPal PRIVATE
+        "-lwebsocket.js"
+        "-sASYNCIFY"
     )
     target_link_options(RobotPal PRIVATE
         "SHELL:--preload-file ${ASSET_DIR}@/Assets"

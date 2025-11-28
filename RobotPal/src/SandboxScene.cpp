@@ -24,7 +24,7 @@ void SandboxScene::OnEnter()
     g_RobotEntity.GetHandle().is_a(modelPrefab);
 
     // 4. 드라이버 연결 (SimDriver 사용)
-    bool useRealRobot = false; // [설정] true면 실제 로봇 모드
+    bool useRealRobot = true; // [설정] true면 실제 로봇 모드
 
     if (useRealRobot) {
         g_Driver = std::make_unique<RealController>(g_RobotEntity, 5555);

@@ -1,3 +1,13 @@
+/**
+ * @file RobotController.h
+ * @author Hong Yoon Pyo (cgantro@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-27
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #pragma once
 
 // 로봇 제어 인터페이스

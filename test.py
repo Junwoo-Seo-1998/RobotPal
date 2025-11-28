@@ -1,59 +1,99 @@
 import socket
-import time
 import threading
-import random
+import time
+import sys
+import tty
+import termios
 
-SERVER_IP = '127.0.0.1' # PC와 동일한 컴퓨터라면 localhost
+# [설정] PC(서버)의 IP 주소를 입력하세요.
+SERVER_IP = '100.115.224.93' 
 SERVER_PORT = 5555
 
-def run_fake_agv():
+# 로봇 상태 (위치, 회전)
+current_x = 0.0
+current_y = 0.0
+current_yaw = 0.0
+
+# 이동 속도 설정
+MOVE_STEP = 0.1
+ROT_STEP = 0.1
+
+def getch():
+    """터미널에서 문자 하나를 입력받는 함수 (Linux/Mac)"""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+def receive_loop(sock):
+    """서버(PC)에서 오는 데이터를 수신하는 스레드"""
+    while True:
+        try:
+            data = sock.recv(1024)
+            if not data:
+                break
+            # PC가 보낸 명령 출력 (필요시)
+            # print(f"\r[PC 명령]: {data.decode().strip()}")
+        except:
+            break
+
+def run_teleop_client():
+    global current_x, current_y, current_yaw
+    
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
-        print(f"PC 서버({SERVER_IP}:{SERVER_PORT})에 접속 시도 중...")
+        print(f"Connecting to {SERVER_IP}:{SERVER_PORT}...")
         client_socket.connect((SERVER_IP, SERVER_PORT))
-        print(">>> [접속 성공] PC와 연결되었습니다.")
+        print(">>> [연결 성공] 키보드 'W/A/S/D'를 눌러 로봇을 움직이세요. ('q' 종료)")
 
-        # 1. 수신 스레드 (PC -> AGV 명령 받기)
-        def receive_loop():
-            while True:
-                try:
-                    data = client_socket.recv(1024)
-                    if not data: break
-                    msg = data.decode().strip()
-                    print(f"\n[명령 수신] {msg}")
-                    
-                    # 명령 해석 (CMD:v,w)
-                    if msg.startswith("CMD:"):
-                        parts = msg.split(":")[1].split(",")
-                        v, w = float(parts[0]), float(parts[1])
-                        print(f"   -> 모터 제어: 속도={v} m/s, 회전={w} rad/s")
-                        
-                except Exception as e:
-                    print(f"수신 에러: {e}")
-                    break
-        
-        threading.Thread(target=receive_loop, daemon=True).start()
+        # 수신 스레드 (PC 메시지 확인용)
+        t = threading.Thread(target=receive_loop, args=(client_socket,), daemon=True)
+        t.start()
 
-        # 2. 송신 루프 (AGV -> PC 상태 보고)
-        x, y = 0.0, 0.0
         while True:
-            # 가상의 위치 데이터 생성 (조금씩 움직이는 척)
-            x += 0.01
-            y += 0.02
+            # 1. 키보드 입력 받기 (Blocking)
+            key = getch()
             
-            state_msg = f"STATE:x={x:.2f},y={y:.2f}"
-            client_socket.sendall(state_msg.encode())
-            # print(f"[상태 전송] {state_msg}")
+            if key == 'q':
+                print("\r>>> 종료합니다.")
+                break
             
-            time.sleep(0.1) # 10Hz 주기로 전송
+            # 2. 좌표 업데이트 (전역 좌표계 기준 단순 이동)
+            # W/S: X축 이동 (앞/뒤)
+            # A/D: Y축 이동 (좌/우) - 시뮬레이션에서는 Z축으로 매핑됨
+            # Q/E: 회전 (Yaw)
+            
+            if key == 'w':
+                current_x += MOVE_STEP
+            elif key == 's':
+                current_x -= MOVE_STEP
+            elif key == 'a':
+                current_y += MOVE_STEP 
+            elif key == 'd':
+                current_y -= MOVE_STEP
+            elif key == 'q': # 좌회전 (Q 키)
+                current_yaw += ROT_STEP
+            elif key == 'e': # 우회전 (E 키)
+                current_yaw -= ROT_STEP
 
-    except ConnectionRefusedError:
-        print(">>> [연결 실패] C++ 시뮬레이터를 먼저 실행해주세요.")
-    except KeyboardInterrupt:
-        print("\n>>> 종료합니다.")
+            # 3. 상태 패킷 전송 (프로토콜: "STATE:x=...,y=...,yaw=...")
+            # C++의 RealDriver가 이 형식을 파싱합니다.
+            msg = f"STATE:x={current_x:.2f},y={current_y:.2f},yaw={current_yaw:.2f}\n"
+            client_socket.sendall(msg.encode())
+            
+            print(f"\r[전송] {msg.strip()}", end="")
+
+    except Exception as e:
+        print(f"\n>>> [오류] {e}")
     finally:
+        # 터미널 설정 복구 (혹시 모를 상황 대비)
+        # termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings) # getch에서 처리됨
         client_socket.close()
 
 if __name__ == "__main__":
-    run_fake_agv()
+    run_teleop_client()
