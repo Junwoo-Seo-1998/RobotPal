@@ -1,4 +1,5 @@
 #include "RobotPal/RealController.h"
+#include "RobotPal/Util/Movement.h" // 분리한 로직 포함
 #include "RobotPal/Components/Components.h"
 #include <cstdio>
 #include <iostream>
@@ -31,32 +32,52 @@ void RealController::Move(float v, float w)
     }
 }
 
+
+
 void RealController::Update(float dt)
 {
     m_Server.Update();
 
+    if (!m_Entity.IsValid()) return;
+
+    bool packetReceived = false;
+
+    // 1. 네트워크 데이터 처리
     if (m_Server.IsConnected())
     {
-        // [변경] 쌓여있는 모든 메시지를 순서대로 처리 (While Loop)
         while (m_Server.HasMessage())
         {
             std::string msg = m_Server.PopMessage();
-            
+            if (msg.find("STATE:") != 0) continue;
+
             float x, y, yaw;
-            // test.py가 보내는 포맷: "STATE:x=...,y=...,yaw=..."
+            // test.py 포맷: STATE:x=...,y=...,yaw=...
             if (std::sscanf(msg.c_str(), "STATE:x=%f,y=%f,yaw=%f", &x, &y, &yaw) == 3)
             {
-                if (m_Entity.IsValid()) {
-                    auto* pos = m_Entity.GetPtr<Position>();
-                    auto* rot = m_Entity.GetPtr<Rotation>();
-                    
-                    if (pos && rot) {
-                        pos->x = x;
-                        pos->z = y; // 2D y -> 3D z
-                        rot->y = yaw;
-                    }
-                }
+                // [데이터 동기화] 실제 로봇 위치로 강제 이동 (보정)
+                // 좌표계 변환 필요 (2D x,y -> 3D x,z)
+                m_Entity.SetLocalPosition({x, 0.0f, y});
+                m_Entity.SetLocalRotation({0.0f, yaw, 0.0f});
+                
+                packetReceived = true;
             }
         }
+    }
+
+    // 2. 패킷이 안 왔을 때의 예측 이동 (Dead Reckoning)
+    // 네트워크가 끊기거나 지연될 때 부드럽게 움직이게 함
+    if (!packetReceived)
+    {
+        // (1) 현재 상태 가져오기
+        glm::vec3 pos = m_Entity.GetLocalPosition();
+        glm::vec3 rot = m_Entity.GetLocalRotation();
+
+        // (2) 속도 감쇠 (명령이 없으면 서서히 멈춤)
+
+        // (3) 이동 계산 (공통 로직 사용)
+
+        // (4) 적용
+        m_Entity.SetLocalPosition(pos);
+        m_Entity.SetLocalRotation(rot);
     }
 }

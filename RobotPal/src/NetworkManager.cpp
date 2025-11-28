@@ -186,8 +186,23 @@ void NetworkManager::Update() {
                 // 처리한 부분 삭제
                 m_AccumulatedBuffer.erase(0, pos + 1);
             }
+
+            // [방어 코드] 버퍼가 너무 커지면(쓰레기 데이터 유입 시) 비워버림
+            if (m_AccumulatedBuffer.size() > 10000) {
+                std::cout << ">>> [Warning] Buffer overflow! Clearing garbage." << std::endl;
+                m_AccumulatedBuffer.clear();
+            }
         } else if (len == 0) {
+            std::cout << ">>> [Network] Connection Closed by Client." << std::endl;
             Close();
+        } else {
+            // [중요] 에러 처리 (len == -1)
+            int err = WSAGetLastError();
+            // WSAEWOULDBLOCK(10035)은 "데이터 없음(정상)"이므로 무시
+            if (err != WSAEWOULDBLOCK) {
+                std::cout << ">>> [Network] Socket Error: " << err << std::endl;
+                Close();
+            }
         }
     }
 #endif

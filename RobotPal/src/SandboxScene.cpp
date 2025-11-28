@@ -51,7 +51,7 @@ void SandboxScene::OnEnter()
 
 
 
-    g_Controller = std::make_unique<HybridController>(g_RobotEntity, 5555);
+    g_Controller = std::make_unique<HybridController>(g_RobotEntity, 12345);
 
     if (g_Controller->Init()) {
         std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;

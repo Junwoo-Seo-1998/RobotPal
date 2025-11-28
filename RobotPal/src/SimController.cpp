@@ -1,6 +1,6 @@
 #include "RobotPal/SimController.h"
 #include "RobotPal/Components/Components.h"
-
+#include "RobotPal/Util/Movement.h"
 SimController::SimController(Entity entity)
     : m_Entity(entity)
 {
@@ -36,15 +36,9 @@ void SimController::Update(float dt)
     
     // (2) 물리 계산 (Dead Reckoning)
     // 회전 (Y축) 업데이트
-    rot.y += m_CurrentW * dt;
-
-
-    pos.z -= std::cos(rot.y) * m_CurrentV * dt;
-    pos.x -= std::sin(rot.y) * m_CurrentV * dt;
-
-
-    m_CurrentV*=0.93f;
-    m_CurrentW*=0.95f;
+    MovementMath::CalculateNextStep(pos, rot, m_CurrentV, m_CurrentW, dt);
+    MovementMath::ApplyFriction(m_CurrentV, m_CurrentW);
+    
     m_Entity.SetLocalPosition(pos);
     m_Entity.SetLocalRotation(rot);
 
