@@ -1,3 +1,13 @@
+/**
+ * @file SimController.cpp
+ * @author Hong Yoon Pyo (cgantro@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-28
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include "RobotPal/SimController.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Util/Movement.h"
@@ -38,7 +48,7 @@ void SimController::Update(float dt)
     // 회전 (Y축) 업데이트
     MovementMath::CalculateNextStep(pos, rot, m_CurrentV, m_CurrentW, dt);
     MovementMath::ApplyFriction(m_CurrentV, m_CurrentW);
-    
+
     m_Entity.SetLocalPosition(pos);
     m_Entity.SetLocalRotation(rot);
 

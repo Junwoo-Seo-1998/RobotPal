@@ -1,3 +1,13 @@
+/**
+ * @file SimController.h
+ * @author Hong Yoon Pyo (cgantro@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-28
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #pragma once
 #include "RobotPal/RobotController.h"
 #include "RobotPal/Entity.h"

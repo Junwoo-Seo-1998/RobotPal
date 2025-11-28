@@ -1,3 +1,13 @@
+/**
+ * @file RealController.cpp
+ * @author Hong Yoon Pyo (cgantro@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2025-11-28
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include "RobotPal/RealController.h"
 #include "RobotPal/Util/Movement.h" // 분리한 로직 포함
 #include "RobotPal/Components/Components.h"
