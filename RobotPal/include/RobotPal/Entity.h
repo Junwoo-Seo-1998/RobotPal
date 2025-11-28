@@ -32,6 +32,9 @@ public:
     //모든 직속 자식 가져오기 (transform.childCount + loop)
     std::vector<Entity> GetChildren() const;
 
+    // 재귀 검색 헬퍼 함수
+    Entity FindChildByNameRecursive(flecs::entity parent, const std::string& targetName);
+
     //자식들 중에서 특정 컴포넌트 찾기 (GetComponentInChildren<T>)
     //recursive: true면 손자, 증손자까지 뒤짐 (DFS)
     template <typename T>

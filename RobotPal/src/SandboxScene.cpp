@@ -3,6 +3,7 @@
 #include "RobotPal/SimController.h" // SimDriver 헤더
 #include "RobotPal/RobotController.h"
 #include "RobotPal/RealController.h"
+#include "RobotPal/HybridController.h"
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
@@ -15,31 +16,52 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-static std::unique_ptr<IRobotController> g_Driver;
+static std::unique_ptr<IRobotController> g_Controller;
 static Entity g_RobotEntity;
+#include <memory>
+std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
-{
+{   
+
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
     g_RobotEntity = CreateEntity("mainModel");
     g_RobotEntity.GetHandle().is_a(modelPrefab);
 
-    // 4. 드라이버 연결 (SimDriver 사용)
-    bool useRealRobot = true; // [설정] true면 실제 로봇 모드
+    g_RobotEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -135.f, 0.f)));
 
-    if (useRealRobot) {
-        g_Driver = std::make_unique<RealController>(g_RobotEntity, 5555);
-    } else {
-        g_Driver = std::make_unique<SimController>(g_RobotEntity);
+    auto prefabEntity2 = CreateEntity("mainModel2");
+    prefabEntity2.GetHandle().is_a(modelPrefab);
+    prefabEntity2.SetLocalPosition({0.2f, 0.f, 0.2f});
+
+
+    auto mainCam=CreateEntity("mainCam");
+    mainCam.Set<Camera>({});
+    mainCam.SetLocalPosition({0.0f, 0.5f, 1.0f});
+
+    camView=Framebuffer::Create(400, 400);
+    auto robotCamera=CreateEntity("robotCam");
+    robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
+               .Set<RenderTarget>({camView});
+    
+    auto attachPoint=g_RobotEntity.FindChildByNameRecursive(g_RobotEntity, "Cam");
+    if(attachPoint)
+    {
+        robotCamera.SetParent(attachPoint);
     }
 
-    if (g_Driver->Init()) {
-        std::cout << ">>> Driver Initialized!" << std::endl;
+
+
+    g_Controller = std::make_unique<HybridController>(g_RobotEntity, 5555);
+
+    if (g_Controller->Init()) {
+        std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;
     }
+    
 }  
 
 void SandboxScene::OnUpdate(float dt)
 {
-    if (!g_Driver) return;
+    if (!g_Controller) return;
 
     // -------------------------------------------------------
     // [1] 입력 처리 (Input)
@@ -57,8 +79,8 @@ void SandboxScene::OnUpdate(float dt)
     // [2] 드라이버 업데이트 (Logic)
     // -------------------------------------------------------
     // 드라이버가 Entity의 Position, Rotation을 수정함
-    g_Driver->Move(v, w);
-    g_Driver->Update(dt);
+    g_Controller->Move(v, w);
+    g_Controller->Update(dt);
 
     // -------------------------------------------------------
     // [3] 렌더링 (Rendering)
@@ -73,6 +95,8 @@ void SandboxScene::OnUpdate(float dt)
     // if (modelRes) {
     //     RenderNode(modelRes->nodes[modelRes->rootNodeIndex], rootTransform, *modelRes);
     // }
+    //auto data=camView->GetColorAttachment()->GetAsyncData();
+    
 }
 
 void SandboxScene::OnExit()
@@ -81,6 +105,10 @@ void SandboxScene::OnExit()
 }
 void SandboxScene::OnImGuiRender()
 {
+    ImGui::Begin("robotCam");
+    ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
+    ImGui::End();
+
     // 창 이름을 전체를 아우르는 이름으로 변경하면 좋습니다.
     ImGui::Begin("Scene Graph & Inspector");
 

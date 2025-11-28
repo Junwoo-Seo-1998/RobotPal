@@ -39,8 +39,9 @@ void SimController::Update(float dt)
     rot.y += m_CurrentW * dt;
 
 
-    pos.z += std::sin(rot.y) * m_CurrentV * dt;
-    pos.x -= std::cos(rot.y) * m_CurrentV * dt;
+    pos.z -= std::cos(rot.y) * m_CurrentV * dt;
+    pos.x -= std::sin(rot.y) * m_CurrentV * dt;
+
 
     m_CurrentV*=0.93f;
     m_CurrentW*=0.95f;

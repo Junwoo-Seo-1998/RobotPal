@@ -2,6 +2,7 @@
 #define __COMPONENTS_H__
 #include "RobotPal/Core/ResourceID.h"
 #include "RobotPal/Core/GraphicsTypes.h"
+#include "RobotPal/Core/Framebuffer.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -55,5 +56,28 @@ struct MeshRenderer {
     std::shared_ptr<Material> material;
     // bool castShadows = true;
 };
+
+//-------------카메라 관련--------------
+
+struct Camera {
+    float fov = 60.0f;
+    float nearPlane = 0.1f;
+    float farPlane = 1000.0f;
+};
+
+// // 렌더링 순서 제어용 TODO
+// struct RenderPriority {
+//     int value = 0; 
+// };
+
+// 어떤 FBO에 그릴지 (관계로 사용해도 되고 컴포넌트로 써도 됨)
+struct RenderTarget {
+    std::shared_ptr<Framebuffer> fbo; 
+};
+
+// // 무엇을 볼 것인가 (비트마스크) TODO
+// struct LayerMask {
+//     uint32_t layers = 0xFFFFFFFF; // 기본적으로 모든 레이어 보기
+// };
 
 #endif

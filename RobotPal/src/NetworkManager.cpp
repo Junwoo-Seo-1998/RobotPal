@@ -151,32 +151,48 @@ bool NetworkManager::Init(int port) {
 
 void NetworkManager::Update() {
 #ifdef __EMSCRIPTEN__
-    // 웹은 콜백 방식이라 Polling 불필요 (혹은 상태 체크용)
+    // 웹소켓 콜백이 자동으로 m_MessageQueue에 넣도록 처리 필요 (여기선 생략)
 #else
-    // [Desktop] 기존 TCP 서버 로직 유지
+    // [PC 서버 로직]
     if (m_ClientSocket == INVALID_SOCKET) {
+        // 접속 대기 (기존 코드 유지)
         sockaddr_in clientAddr;
-        socklen_t clientLen = sizeof(clientAddr);
+        int clientLen = sizeof(clientAddr);
         SOCKET newClient = accept(m_ListenSocket, (sockaddr*)&clientAddr, &clientLen);
-
         if (newClient != INVALID_SOCKET) {
-            std::cout << "[TCP] Client Connected!\n";
+            std::cout << "[Network] Client Connected!" << std::endl;
             m_ClientSocket = newClient;
             SetNonBlocking(m_ClientSocket);
             m_IsConnected = true;
         }
     } else {
-        char buf[1024];
+        // 데이터 수신
+        char buf[4096];
         int len = recv(m_ClientSocket, buf, sizeof(buf) - 1, 0);
+        
         if (len > 0) {
             buf[len] = '\0';
-            m_ReceivedBuffer = std::string(buf);
+            
+            // [핵심] 버퍼에 이어 붙이기
+            m_AccumulatedBuffer += buf;
+
+            // [핵심] 개행(\n) 기준으로 잘라서 큐에 넣기
+            size_t pos = 0;
+            while ((pos = m_AccumulatedBuffer.find('\n')) != std::string::npos) {
+                std::string packet = m_AccumulatedBuffer.substr(0, pos);
+                if (!packet.empty()) {
+                    m_MessageQueue.push_back(packet);
+                }
+                // 처리한 부분 삭제
+                m_AccumulatedBuffer.erase(0, pos + 1);
+            }
         } else if (len == 0) {
-            Close(); // 연결 끊김
+            Close();
         }
     }
 #endif
 }
+
 
 void NetworkManager::Send(const std::string& msg) {
     std::string finalMsg = msg + "\n";
@@ -202,8 +218,14 @@ bool NetworkManager::IsConnected() const {
 #endif
 }
 
-std::string NetworkManager::GetLastReceivedData() {
-    std::string temp = m_ReceivedBuffer;
-    m_ReceivedBuffer.clear();
-    return temp;
+
+bool NetworkManager::HasMessage() {
+    return !m_MessageQueue.empty();
+}
+
+std::string NetworkManager::PopMessage() {
+    if (m_MessageQueue.empty()) return "";
+    std::string msg = m_MessageQueue.front();
+    m_MessageQueue.pop_front();
+    return msg;
 }
