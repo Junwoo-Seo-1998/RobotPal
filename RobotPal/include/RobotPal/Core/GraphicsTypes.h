@@ -38,9 +38,10 @@ struct PrimitiveData {
 };
 
 struct MaterialData {
+    int uniqueID=-1;
     std::string name;
     glm::vec4 baseColorFactor = glm::vec4(1.0f);
-    int baseColorTextureIndex = -1; // 텍스처 ID (AssetManager 관리)
+    //int baseColorTextureIndex = -1; // 텍스처 ID (AssetManager 관리)
     // ... metallic, roughness 등 추가
 };
 
@@ -90,29 +91,6 @@ struct ModelResource {
     int rootNodeIndex = 0;
 };
 
-//todo: remove later
-struct Material {
-    std::shared_ptr<Shader> shader;
-    //std::shared_ptr<Texture> mainTexture;
-    glm::vec4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    
-    // void Bind() const {
-    //     if(shader) {
-    //         shader->Bind();
-    //         shader->SetFloat4("u_Color", baseColor);
-    //         if (mainTexture) {
-    //             // shader->SetInt("u_MainTex", 0); 
-    //             // mainTexture->Bind(0);
-    //         }
-    //     }
-    // }
-};
-
-struct Mesh {
-    std::shared_ptr<VertexArray> vertexArray;
-    std::string name;
-    uint32_t vertexCount = 0; // DrawArrays
-};
 
 
 

@@ -21,7 +21,11 @@ bool ModelLoader::LoadModelData(const std::string &path, ModelResource &outResou
     {
         MaterialData mData;
         mData.name = mat.name;
-        // 텍스처 인덱스, 컬러 값 추출...
+        // 텍스처 인덱스, 컬러 값 추출..
+        {
+            auto& d=mat.pbrMetallicRoughness.baseColorFactor;
+            mData.baseColorFactor=glm::vec4(d[0], d[1], d[2], d[3]);
+        }
         outResource.materials.push_back(mData);
     }
 
@@ -401,7 +405,18 @@ void PrefabFactory::CreateNodesRecursive(flecs::world &ecs, flecs::entity parent
         //entity.set<MeshFilter>({(ResourceID)node.meshIndex});
 
         // 재질 정보 등도 여기서 설정
-        entity.set<MeshRenderer>({/*...*/});
+        // (2) MeshRenderer: 어떤 메터리얼들을 쓰는가?
+        MeshRenderer renderer;
+        renderer.materials.reserve(meshData.subMeshes.size());
+
+        // 메쉬의 서브메쉬 개수만큼 돌면서 메터리얼 ID 수집
+        for (const auto& subMesh : meshData.subMeshes) {
+            // AssetManager에서 미리 변환해둔 ID를 가져옴
+            renderer.materials.push_back(res.materials[subMesh.defaultMaterialIndex].uniqueID);
+        }
+
+        // 컴포넌트 부착 (std::vector 복사 발생하지만, 초기화 시 1회라 괜찮음)
+        entity.set<MeshRenderer>(renderer);
     }
 
     for (int childIdx : node.childrenIndices)

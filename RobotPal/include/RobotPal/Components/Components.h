@@ -53,8 +53,10 @@ struct MeshFilter
 };
 
 struct MeshRenderer {
-    std::shared_ptr<Material> material;
-    // bool castShadows = true;
+    std::vector<ResourceID> materials; 
+    
+    bool castShadows = true;
+    bool receiveShadows = true;
 };
 
 //-------------카메라 관련--------------

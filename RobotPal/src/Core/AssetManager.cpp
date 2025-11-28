@@ -1,6 +1,7 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Core/ModelLoader.h"
 #include "RobotPal/Core/ResourceID.h"
+
 AssetManager &AssetManager::Get()
 {
     static AssetManager instance;
@@ -48,6 +49,22 @@ std::shared_ptr<ModelResource> AssetManager::GetModel(const std::string &name)
         {DataType::Int4,   "a_BoneIDs"},
         {DataType::Float4, "a_Weights"}
     };
+
+    for (int i=0; i<model->materials.size(); ++i)
+    {
+        MaterialData& mat=model->materials[i];
+
+        // 이름이 없으면 임시 이름 생성
+        std::string matName = mat.name.empty() ? "Mat_" + std::to_string(i) : mat.name;
+        // 고유 ID 생성 (모델명/재질명 조합 추천)
+        std::string uniqueIDStr = name + "/Materials/" + matName;
+
+        ResourceID id = GetID(uniqueIDStr);
+        mat.uniqueID = id;
+        m_Material[id]=&mat;
+
+
+    }
 
     for (int i = 0; i < model->meshes.size(); ++i) {
         MeshData& mesh = model->meshes[i];
@@ -99,6 +116,10 @@ std::shared_ptr<ModelResource> AssetManager::GetModel(const std::string &name)
     return model;
 }
 
+const MaterialData *AssetManager::GetMaterial(int id)
+{
+    return m_Material[id];
+}
 const MeshData *AssetManager::GetMesh(int id)
 {
     return m_Mesh[id];

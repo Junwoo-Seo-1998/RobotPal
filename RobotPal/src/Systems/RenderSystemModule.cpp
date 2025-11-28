@@ -192,18 +192,21 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
             renderQuery.each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
             {
                 m_SimpleShader->SetMat4("u_Model", tm);
-
                 // 해당 메쉬의 VAO 바인딩
                 auto meshData = AssetManager::Get().GetMesh(mf.meshID);
                 meshData->vao->Bind();
-
+                
                 // 서브메쉬 단위로 그리기
+                int index=0;
                 for (const auto &sub : meshData->subMeshes)
                 {
+                    const MaterialData* mat=AssetManager::Get().GetMaterial(mr.materials[index]);
+                    m_SimpleShader->SetFloat4("u_Color", mat->baseColorFactor); // 조명색 등
                     glDrawElements(GL_TRIANGLES,
                                 sub.indexCount,
                                 GL_UNSIGNED_INT,
                                 (void *)(sub.indexStart * sizeof(uint32_t)));
+                    index++;
                 }
             });
         }
