@@ -3,6 +3,8 @@
 #
 include(FetchContent)
 
+
+
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
@@ -11,6 +13,13 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
+# nlohmann/json 라이브러리 추가
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.2 # 원하는 버전으로 변경 가능
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 FetchContent_Declare(imgui_external
 	GIT_REPOSITORY "https://github.com/ocornut/imgui.git"
@@ -81,6 +90,7 @@ target_include_directories(RobotPal PUBLIC
 target_link_libraries(RobotPal PRIVATE glm::glm)
 target_link_libraries(RobotPal PRIVATE glad)
 target_link_libraries(RobotPal PRIVATE tinygltf)
+target_link_libraries(RobotPal PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(RobotPal PRIVATE flecs::flecs_static)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -110,6 +120,10 @@ if(EMSCRIPTEN)
         "-sFULL_ES3=1"          # WebGL 2에 OpenGL ES 3 사용
         "-sALLOW_MEMORY_GROWTH=1"
         "--use-preload-plugins" # 에셋 로딩을 위함
+    )
+    target_link_options(RobotPal PRIVATE
+        "-lwebsocket.js"
+        "-sASYNCIFY"
     )
     target_link_options(RobotPal PRIVATE
         "SHELL:--preload-file ${ASSET_DIR}@/Assets"
