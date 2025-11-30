@@ -11,28 +11,33 @@
 #include "RobotPal/SimController.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Util/Movement.h"
-SimController::SimController(Entity entity)
+#include "RobotPal/Entity.h"
+SimController::SimController(Entity &entity)
     : m_Entity(entity)
 {
 }
 
 bool SimController::Init()
 {
+    std::cout << ">>> [SimController] Initializing..." << std::endl;
+    std::cout << ">>> Entity is valid: " << (m_Entity.IsValid() ? "Yes" : "No") << std::endl;
     if (!m_Entity.IsValid()) return false;
-    if (!m_Entity.Has<Position>() || !m_Entity.Has<Rotation>()) return false;
+    std::cout << ">>> Entity has Position: " << (m_Entity.Has<Position>() ? "Yes" : "No") << std::endl;
+    std::cout << ">>> Entity has Rotation: " << (m_Entity.Has<Rotation>() ? "Yes" : "No") << std::endl;
+    // if (!m_Entity.Has<Position>() || !m_Entity.Has<Rotation>()) return false;S
     return true;
 }
 
-void SimController::Move(float v, float w)
+void SimController::Move(const float& v, const float& w)
 {
     m_TargetV = v;
     m_TargetW = w;
 }
 
-void SimController::Update(float dt)
+void SimController::Update(const float& dt)
 {
     if (!m_Entity.IsValid()) return;
-
+  
     // 1. 보간 (Soft Start/Stop)
     m_CurrentV += (m_TargetV - m_CurrentV) * dt;
     m_CurrentW += (m_TargetW - m_CurrentW) * dt;

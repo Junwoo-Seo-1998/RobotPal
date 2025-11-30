@@ -21,8 +21,8 @@ public:
     virtual bool Init() = 0;
 
     // 이동 명령 (v: 선속도, w: 각속도)
-    virtual void Move(float v, float w) = 0; // Drive -> Move로 변경 (더 일반적)
+    virtual void Move(const float& v, const float& w) = 0; // Drive -> Move로 변경 (더 일반적)
 
     // 상태 업데이트 (매 프레임 Entity 데이터 수정)
-    virtual void Update(float dt) = 0;
+    virtual void Update(const float& dt) = 0;
 };

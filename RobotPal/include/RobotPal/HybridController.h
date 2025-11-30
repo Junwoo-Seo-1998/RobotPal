@@ -20,12 +20,12 @@ class HybridController : public IRobotController
 public:
     // mainEntity: 화면에 보여질 메인 로봇 (Sim이 제어)
     // ghostEntity: 실제 로봇의 위치를 보여줄 그림자 로봇 (Real이 제어, 선택사항)
-    HybridController(Entity target, int port);
+    HybridController(Entity &target, int port);
     virtual ~HybridController() = default;
 
     virtual bool Init() override;
-    virtual void Move(float v, float w) override;
-    virtual void Update(float dt) override;
+    virtual void Move(const float& v, const float& w) override;
+    virtual void Update(const float& dt) override;
 
 private:
     std::unique_ptr<SimController> m_Sim;

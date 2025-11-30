@@ -12,7 +12,7 @@
 #include "RobotPal/HybridController.h"
 #include <iostream>
 
-HybridController::HybridController(Entity Target, int port)
+HybridController::HybridController(Entity &Target, int port)
 {
     // 1. 시뮬레이션 컨트롤러는 '메인 로봇'을 움직임 (즉각 반응)
     m_Sim = std::make_unique<SimController>(Target);
@@ -31,19 +31,19 @@ bool HybridController::Init()
         std::cout << ">>> [Hybrid] Real Controller Init Failed (Network Error?)" << std::endl;
         // 네트워크 실패해도 시뮬레이션은 되게 할지, 멈출지 결정 (여기선 경고만)
     }
-    
     return simOk; // 시뮬레이션만 돼도 일단 성공으로 간주
 }
 
-void HybridController::Move(float v, float w)
+void HybridController::Move(const float& v, const float& w)
 {
     // 양쪽 모두에게 명령 전달
+    std::cout << ">>> [Hybrid] Move Command - v: " << v << ", w: " << w << std::endl;
     m_Sim->Move(v, w);  // 화면상 로봇 움직임 예측
-    m_Real->Move(v, w); // 실제 로봇에게 패킷 전송
+    // m_Real->Move(v, w); // 실제 로봇에게 패킷 전송
 }
 
-void HybridController::Update(float dt)
+void HybridController::Update(const float& dt)
 {
     m_Sim->Update(dt);  // 물리 연산 수행
-    m_Real->Update(dt); // 네트워크 수신 및 고스트 엔티티 동기화
+    // m_Real->Update(dt); // 네트워크 수신 및 고스트 엔티티 동기화
 }

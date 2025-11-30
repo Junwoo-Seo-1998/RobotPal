@@ -15,12 +15,12 @@
 class SimController : public IRobotController
 {
 public:
-    SimController(Entity entity);
+    SimController(Entity &entity);
     virtual ~SimController() = default;
 
     virtual bool Init() override;
-    virtual void Move(float v, float w) override;
-    virtual void Update(float dt) override;
+    virtual void Move(const float& v, const float& w) override;
+    virtual void Update(const float& dt) override;
 
 private:
     Entity m_Entity;

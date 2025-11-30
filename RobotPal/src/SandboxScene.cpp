@@ -10,7 +10,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/quaternion.hpp> // [중요] 쿼터니언 -> 행렬 변환용
+#include <glm/gtc/quaternion.hpp>
 #include <imgui.h>
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
@@ -56,7 +56,7 @@ void SandboxScene::OnEnter()
     if (g_Controller->Init()) {
         std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;
     }
-    
+
 }  
 
 void SandboxScene::OnUpdate(float dt)
@@ -79,15 +79,10 @@ void SandboxScene::OnUpdate(float dt)
     // [2] 드라이버 업데이트 (Logic)
     // -------------------------------------------------------
     // 드라이버가 Entity의 Position, Rotation을 수정함
+
     g_Controller->Move(v, w);
     g_Controller->Update(dt);
 
-    // -------------------------------------------------------
-    // [3] 렌더링 (Rendering)
-    // -------------------------------------------------------
-    // TransformSystemModule이 계산해둔 행렬을 가져옴
-    glm::mat4 rootTransform = glm::mat4(1.0f);
-    
    
 
     // 모델 그리기

@@ -18,13 +18,13 @@
 class RealController : public IRobotController
 {
 public:
-    RealController(Entity entity, int port);
+    RealController(Entity &entity, int port);
     virtual ~RealController() = default;
 
     // [인터페이스 구현]
     virtual bool Init() override;
-    virtual void Move(float v, float w) override;
-    virtual void Update(float dt) override;
+    virtual void Move(const float& v, const float& w) override;
+    virtual void Update(const float& dt) override;
 
 private:
     // 제어 대상 및 통신 모듈

@@ -15,7 +15,7 @@
 #include <iostream>
 #include <cmath>
 
-RealController::RealController(Entity entity, int port)
+RealController::RealController(Entity &entity, int port)
     : m_Entity(entity), m_Port(port)
 {
 }
@@ -29,7 +29,7 @@ bool RealController::Init()
     return true;
 }
 
-void RealController::Move(float v, float w)
+void RealController::Move(const float& v, const float& w)
 {
     if (std::abs(m_LastV - v) > 0.001f || std::abs(m_LastW - w) > 0.001f)
     {
@@ -44,7 +44,7 @@ void RealController::Move(float v, float w)
 
 
 
-void RealController::Update(float dt)
+void RealController::Update(const float& dt)
 {
     m_Server.Update();
 
