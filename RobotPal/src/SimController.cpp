@@ -39,8 +39,9 @@ void SimController::Update(const float& dt)
     if (!m_Entity.IsValid()) return;
   
     // 1. 보간 (Soft Start/Stop)
-    m_CurrentV += (m_TargetV - m_CurrentV) * dt;
-    m_CurrentW += (m_TargetW - m_CurrentW) * dt;
+    const float accel = 5.0f;
+    m_CurrentV += (m_TargetV - m_CurrentV) * accel * dt;
+    m_CurrentW += (m_TargetW - m_CurrentW) * accel * dt;
 
     if (std::abs(m_CurrentV) < 0.01f) m_CurrentV = 0.0f;
     if (std::abs(m_CurrentW) < 0.01f) m_CurrentW = 0.0f;
