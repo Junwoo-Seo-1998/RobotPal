@@ -2,7 +2,7 @@
 # 여기에 하위 프로젝트를 포함합니다.
 #
 cmake_minimum_required (VERSION 3.8)
-
+add_compile_definitions(NOMINMAX)
 # Emscripten 빌드를 감지합니다.
 if(EMSCRIPTEN)
   message(STATUS "Emscripten build detected")
