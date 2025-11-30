@@ -1,174 +1,193 @@
 #include "RobotPal/SandboxScene.h"
-#include "RobotPal/Shader.h"
-#include "RobotPal/VertexArray.h"
 #include "RobotPal/Buffer.h"
+#include "RobotPal/GlobalComponents.h"
+#include "RobotPal/Core/AssetManager.h"
+#include "RobotPal/Components/Components.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp> // [중요] 쿼터니언 -> 행렬 변환용
 #include <imgui.h>
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
-#include "RobotPal/GlobalComponents.h"
-
 #include <iostream>
-
-WindowData windowSize;
+#include <memory>
+std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {
-    m_World.observer<const WindowData>("OnResize")
-        .event(flecs::OnSet) // 값이 set 되었을 때
-        .each([](const WindowData &win)
-              {
-            std::cout << "화면 크기가 변경됨! " << win.width << "x" << win.height << std::endl;
-            windowSize=win; });
+    auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
+    auto prefabEntity = CreateEntity("mainModel");
+    prefabEntity.GetHandle().is_a(modelPrefab);
 
-    m_CubeColor = glm::vec4(0.2f, 0.3f, 0.8f, 1.0f);
+    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -135.f, 0.f)));
 
-    // Create cube
-    m_CubeVA = VertexArray::Create();
+    auto prefabEntity2 = CreateEntity("mainModel2");
+    prefabEntity2.GetHandle().is_a(modelPrefab);
+    prefabEntity2.SetLocalPosition({0.2f, 0.f, 0.2f});
 
-    float vertices[] = {
-        // positions          // normals
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
 
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    auto mainCam=CreateEntity("mainCam");
+    mainCam.Set<Camera>({});
+    mainCam.SetLocalPosition({0.0f, 0.5f, 1.0f});
 
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
-    auto vertexBuffer = std::make_shared<VertexBuffer>(vertices, sizeof(vertices));
-
-    BufferLayout layout = {
-        {DataType::Float3, "a_Position"},
-        {DataType::Float3, "a_Normal"}};
-    vertexBuffer->SetLayout(layout);
-    m_CubeVA->AddVertexBuffer(vertexBuffer);
-
-    std::string vertexSrc = R"(#version 300 es
-        precision mediump float;
-        layout(location = 0) in vec3 a_Position;
-        layout(location = 1) in vec3 a_Normal;
-        
-        uniform mat4 u_Model;
-        uniform mat4 u_View;
-        uniform mat4 u_Projection;
-
-        out vec3 v_Normal;
-        out vec3 v_FragPos;
-
-        void main()
-        {
-            v_FragPos = vec3(u_Model * vec4(a_Position, 1.0));
-            v_Normal = mat3(transpose(inverse(u_Model))) * a_Normal;
-            gl_Position = u_Projection * u_View * vec4(v_FragPos, 1.0);
-        }
-    )";
-
-    std::string fragmentSrc = R"(#version 300 es
-        precision mediump float;
-        layout(location = 0) out vec4 color;
-        
-        in vec3 v_Normal;
-        in vec3 v_FragPos;
-
-        uniform vec4 u_Color;
-        uniform vec3 u_ViewPos;
-
-        void main()
-        {
-            vec3 lightPos = vec3(1.2, 1.0, 2.0);
-            
-            // Ambient
-            float ambientStrength = 0.1;
-            vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
-
-            // Diffuse
-            vec3 norm = normalize(v_Normal);
-            vec3 lightDir = normalize(lightPos - v_FragPos);
-            float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
-
-            // Specular
-            float specularStrength = 0.5;
-            vec3 viewDir = normalize(u_ViewPos - v_FragPos);
-            vec3 reflectDir = reflect(-lightDir, norm);
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-            vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
-
-            vec3 result = (ambient + diffuse + specular) * u_Color.rgb;
-            color = vec4(result, u_Color.a);
-        }
-    )";
-
-    m_CubeShader = Shader::CreateFromSource("PhongCube", vertexSrc, fragmentSrc);
-}
+    camView=Framebuffer::Create(400, 400);
+    auto robotCamera=CreateEntity("robotCam");
+    robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
+               .Set<RenderTarget>({camView});
+    
+    auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
+    if(attachPoint)
+    {
+        robotCamera.SetParent(attachPoint);
+    }
+    
+}  
 
 void SandboxScene::OnUpdate(float dt)
 {
-    // Create transformations
-    glm::mat4 model = glm::mat4(1.0f);
-    glm::mat4 view = glm::mat4(1.0f);
-    glm::mat4 projection = glm::mat4(1.0f);
-
-    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    view = glm::translate(glm::mat4(1.0f), -viewPos);
-    projection = glm::perspective(glm::radians(45.0f), windowSize.GetAspect(), 0.1f, 100.0f);
-
-    // Draw the cube
-    m_CubeShader->Bind();
-    m_CubeShader->SetMat4("u_Model", model);
-    m_CubeShader->SetMat4("u_View", view);
-    m_CubeShader->SetMat4("u_Projection", projection);
-    m_CubeShader->SetFloat4("u_Color", m_CubeColor);
-    m_CubeShader->SetFloat3("u_ViewPos", viewPos);
-
-    m_CubeVA->Bind();
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    //auto data=camView->GetColorAttachment()->GetAsyncData();
+    
 }
 
 void SandboxScene::OnExit()
 {
-    m_CubeVA = nullptr;
-    m_CubeShader = nullptr;
+
 }
 
 void SandboxScene::OnImGuiRender()
 {
-    ImGui::Begin("Cube Color");
-    ImGui::ColorEdit4("Color", &m_CubeColor.x);
+    ImGui::Begin("robotCam");
+    ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
+    ImGui::End();
+
+    // 창 이름을 전체를 아우르는 이름으로 변경하면 좋습니다.
+    ImGui::Begin("Scene Graph & Inspector");
+
+    // 1. 선택된 엔티티 상태
+    static flecs::entity selectedEntity;
+
+    // ---------------------------------------------------------
+    // [레이아웃 시작] 2개의 컬럼으로 화면 분할 (크기 조절 가능)
+    // ---------------------------------------------------------
+    // flags: Resizable(경계선 드래그), BordersInnerV(중간 세로줄)
+    if (ImGui::BeginTable("SplitLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+    {
+        // =====================================================
+        // [왼쪽 컬럼] 계층 구조 (Hierarchy)
+        // =====================================================
+        ImGui::TableNextColumn();
+        
+        // 팁: 왼쪽 영역 안에서만 스크롤이 되도록 Child Window를 사용합니다.
+        // 높이를 0으로 설정하면 남은 세로 공간을 모두 채웁니다.
+        ImGui::BeginChild("HierarchyRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        
+        ImGui::TextDisabled("Hierarchy");
+        ImGui::Separator();
+
+        // --- 재귀 람다 (기존 로직 유지) ---
+        auto drawNode = [&](auto&& self, flecs::entity e) -> void {
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (selectedEntity == e) {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            bool hasChildren = false;
+            e.children([&](flecs::entity) { hasChildren = true; });
+            if (!hasChildren) {
+                flags |= ImGuiTreeNodeFlags_Leaf;
+            }
+
+            if (e.name() == "mainModel") {
+                flags |= ImGuiTreeNodeFlags_DefaultOpen;
+            }
+
+            const char* name = e.name().c_str();
+            std::string label = (name && *name) ? name : std::to_string(e.id());
+
+            bool opened = ImGui::TreeNodeEx((void*)(uintptr_t)e.id(), flags, "%s", label.c_str());
+
+            if (ImGui::IsItemClicked()) {
+                selectedEntity = e;
+            }
+
+            if (opened) {
+                if (hasChildren) {
+                    e.children([&](flecs::entity child) {
+                        self(self, child);
+                    });
+                }
+                ImGui::TreePop();
+            }
+        };
+
+        // --- 트리 그리기 ---
+        flecs::entity rootModel = m_SceneRoot;
+        if (rootModel.is_alive()) {
+            rootModel.children([&](flecs::entity child) {
+                drawNode(drawNode, child);
+            });
+        } else {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "'mainModel' not found.");
+        }
+
+        ImGui::EndChild(); // HierarchyRegion 끝
+
+        // =====================================================
+        // [오른쪽 컬럼] 인스펙터 (Inspector)
+        // =====================================================
+        ImGui::TableNextColumn();
+        
+        // 오른쪽 영역도 내용이 많으면 스크롤 되도록 Child Window 처리
+        ImGui::BeginChild("InspectorRegion", ImVec2(0, 0), false);
+
+        ImGui::TextDisabled("Inspector");
+        ImGui::Separator();
+
+        if (selectedEntity.is_alive()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[%s] Properties", selectedEntity.name().c_str());
+            ImGui::Spacing();
+
+            // 사용자 정의 Entity 래퍼 사용
+            Entity selectedEntityWrapper(selectedEntity);
+
+            // 1. Position (Translation)
+            {
+                auto pos = selectedEntityWrapper.GetLocalPosition();
+                if(ImGui::DragFloat3("Position", glm::value_ptr(pos), 0.1f))
+                {
+                    selectedEntityWrapper.SetLocalPosition(pos);
+                }
+            }
+
+            // 2. Rotation (Radian <-> Degree 변환)
+            {
+                // GetLocalRotation()이 Radian을 반환한다고 가정
+                glm::vec3 eulerAngles = glm::degrees(selectedEntityWrapper.GetLocalRotation());
+                
+                // UI에서는 Degree로 조작
+                if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerAngles), 1.0f)) 
+                {
+                    // 저장할 때는 다시 Radian으로
+                    selectedEntityWrapper.SetLocalRotation(glm::radians(eulerAngles));
+                }
+            }
+
+            // 3. Scale
+            {
+                auto scale = selectedEntityWrapper.GetLocalScale();
+                if(ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.05f))
+                {
+                    selectedEntityWrapper.SetLocalScale(scale);
+                }
+            }
+        } else {
+            ImGui::TextDisabled("No entity selected.");
+        }
+        
+        ImGui::EndChild(); // InspectorRegion 끝
+        
+        ImGui::EndTable(); // SplitLayout 끝
+    }
+
     ImGui::End();
 }

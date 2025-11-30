@@ -3,7 +3,8 @@
 #include "RobotPal/Scene.h"
 #include "glm/glm.hpp"
 #include <memory>
-
+#include "RobotPal/Core/GraphicsTypes.h"
+#include "RobotPal/GlobalComponents.h"
 class VertexArray;
 class Shader;
 
@@ -18,12 +19,8 @@ public:
     void OnExit() override;
 
     void OnImGuiRender() override;
-
 private:
-    Entity m_Camera;
-    std::shared_ptr<VertexArray> m_CubeVA;
-    std::shared_ptr<Shader> m_CubeShader;
-    glm::vec4 m_CubeColor;
+    Entity m_Center;
 };
 
 #endif

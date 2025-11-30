@@ -17,7 +17,10 @@
 
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/SandboxScene.h"
-
+#include "RobotPal/Core/AssetManager.h"
+#include "RobotPal/Systems/RenderSystemModule.h"
+#include "RobotPal/Systems/TransformSystemModule.h"
+#include "RobotPal/Core/Texture.h"
 void EngineApp::Run()
 {
     Init();
@@ -35,6 +38,9 @@ void EngineApp::Init()
     m_SceneManager->LoadScene<SandboxScene>();
 
     m_World.set<WindowData>({ (float)1280, (float)720});
+
+    m_World.import<RenderSystemModule>();
+    m_World.import<TransformSystemModule>();
 }
 
 void EngineApp::MainLoop()
@@ -42,7 +48,7 @@ void EngineApp::MainLoop()
     m_LastFrameTime=(float)glfwGetTime();
     glm::vec4 clear_color = {0.45f, 0.55f, 0.60f, 1.00f};
 
-    RenderCommand::Init();
+    RenderCommand::Init(); 
 #ifdef __EMSCRIPTEN__
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
@@ -96,6 +102,8 @@ void EngineApp::MainLoop()
 
 void EngineApp::Shutdown()
 {
+    Texture::CleanUpStaticResources();
+    AssetManager::Get().ClearData();
     ImGuiManager::Get().Shutdown();
     m_Window->Shutdown();
 }
