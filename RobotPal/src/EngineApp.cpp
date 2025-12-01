@@ -15,6 +15,7 @@
 #include "RobotPal/Buffer.h"
 #include "RobotPal/Shader.h"
 
+#include "RobotPal/Network/NetworkEngine.h"
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/SandboxScene.h"
 #include "RobotPal/Core/AssetManager.h"
@@ -39,6 +40,7 @@ void EngineApp::Init()
 
     m_World.set<WindowData>({ (float)1280, (float)720});
 
+    m_World.import<NetworkEngine>();
     m_World.import<RenderSystemModule>();
     m_World.import<TransformSystemModule>();
 }

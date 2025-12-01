@@ -110,6 +110,8 @@ if(EMSCRIPTEN)
         "-sFULL_ES3=1"          # WebGL 2에 OpenGL ES 3 사용
         "-sALLOW_MEMORY_GROWTH=1"
         "--use-preload-plugins" # 에셋 로딩을 위함
+        "-sPROXY_TO_PTHREAD"
+        "-sPTHREAD_POOL_SIZE=3"
     )
     target_link_options(RobotPal PRIVATE
         "SHELL:--preload-file ${ASSET_DIR}@/Assets"

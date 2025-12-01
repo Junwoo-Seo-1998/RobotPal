@@ -3,6 +3,7 @@
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
+#include "RobotPal/Network/NetworkEngine.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -33,7 +34,8 @@ void SandboxScene::OnEnter()
     camView=Framebuffer::Create(400, 400);
     auto robotCamera=CreateEntity("robotCam");
     robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
-               .Set<RenderTarget>({camView});
+               .Set<RenderTarget>({camView})
+               .Set<VideoSender>({400, 400, 15.0f});
     
     auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
     if(attachPoint)
@@ -46,6 +48,9 @@ void SandboxScene::OnEnter()
 void SandboxScene::OnUpdate(float dt)
 {
     //auto data=camView->GetColorAttachment()->GetAsyncData();
+
+    //일단 이형태로 가져와서 씀
+    //auto NetworkEngine=m_World.get<NetworkEngineHandle>().instance;
     
 }
 

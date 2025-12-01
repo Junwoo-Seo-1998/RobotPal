@@ -82,4 +82,12 @@ struct RenderTarget {
 //     uint32_t layers = 0xFFFFFFFF; // 기본적으로 모든 레이어 보기
 // };
 
+//------------네트워크 관련---------------
+
+struct VideoSender {
+    int width, height;
+    float fpsLimit;
+    float timeSinceLastFrame;
+};
+
 #endif
