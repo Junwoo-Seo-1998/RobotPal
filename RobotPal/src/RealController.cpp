@@ -15,6 +15,8 @@
 #include <iostream>
 #include <cmath>
 
+
+const std::string ip = "127.0.0.1";// 추후 중계 서버의 IP로 변경
 RealController::RealController(Entity &entity, int port)
     : m_Entity(entity), m_Port(port)
 {
@@ -22,7 +24,7 @@ RealController::RealController(Entity &entity, int port)
 
 bool RealController::Init()
 {
-    if (!m_Server.Init(m_Port)) { // Start -> Init으로 변경됨
+    if (!m_Server.Init(ip,m_Port)) {
         std::cout << ">>> Server Init Failed!" << std::endl;
         return false;
     }

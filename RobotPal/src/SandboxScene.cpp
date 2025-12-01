@@ -49,8 +49,6 @@ void SandboxScene::OnEnter()
         robotCamera.SetParent(attachPoint);
     }
 
-
-
     g_Controller = std::make_unique<HybridController>(g_RobotEntity, 12345);
 
     if (g_Controller->Init()) {

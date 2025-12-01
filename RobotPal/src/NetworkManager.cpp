@@ -1,49 +1,35 @@
-/**
- * @file NetworkManager.cpp
- * @author Hong Yoon Pyo (cgantro@gmail.com)
- * @brief 
- * @version 0.1
- * @date 2025-11-27
- * 
- * @copyright Copyright (c) 2025
- * 
- */
-#include "RobotPal/NetworkManager.h" // 실제 파일명에 맞게 수정 (NetworkManager.h 권장)
+#include "RobotPal/NetworkManager.h"
 #include <iostream>
-#include <vector>
 
-// ---------------------------------------------------------
-// [Web] Emscripten WebSocket Callbacks
-// ---------------------------------------------------------
+// =========================================================
+// [WEB] Emscripten Callbacks
+// =========================================================
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 
-// C 스타일 콜백 함수들 (멤버 함수로 바로 못 씀)
 EM_BOOL OnOpen(int eventType, const EmscriptenWebSocketOpenEvent* websocketEvent, void* userData) {
-    std::cout << "[Web] WebSocket Connected!" << std::endl;
-    NetworkManager* nm = (NetworkManager*)userData;
-    // nm->SetConnected(true); // 친구 클래스나 public 설정 필요
+    std::cout << ">>> [Web] Connected to Bridge Server!" << std::endl;
     return EM_TRUE;
 }
 
 EM_BOOL OnMessage(int eventType, const EmscriptenWebSocketMessageEvent* websocketEvent, void* userData) {
+    NetworkManager* nm = (NetworkManager*)userData;
     if (websocketEvent->isText) {
         std::string msg((const char*)websocketEvent->data);
-        // nm->OnReceive(msg);
-        std::cout << "[Web] Recv: " << msg << std::endl;
+        nm->PushToRecvQueue(msg); 
     }
     return EM_TRUE;
 }
 
 EM_BOOL OnClose(int eventType, const EmscriptenWebSocketCloseEvent* websocketEvent, void* userData) {
-    std::cout << "[Web] WebSocket Disconnected." << std::endl;
+    std::cout << ">>> [Web] Disconnected." << std::endl;
     return EM_TRUE;
 }
 #endif
 
-// ---------------------------------------------------------
+// =========================================================
 // Class Implementation
-// ---------------------------------------------------------
+// =========================================================
 
 NetworkManager::NetworkManager() {
 #ifdef _WIN32
@@ -67,27 +53,22 @@ void NetworkManager::Close() {
         m_WebSocket = 0;
     }
 #else
-    if (m_ClientSocket != INVALID_SOCKET) {
+    if (m_Socket != -1) {
     #ifdef _WIN32
-        closesocket(m_ClientSocket);
+        closesocket(m_Socket);
     #else
-        close(m_ClientSocket);
+        close(m_Socket);
     #endif
+        m_Socket = -1;
     }
-    if (m_ListenSocket != INVALID_SOCKET) {
-    #ifdef _WIN32
-        closesocket(m_ListenSocket);
-    #else
-        close(m_ListenSocket);
-    #endif
-    }
-    m_ClientSocket = INVALID_SOCKET;
-    m_ListenSocket = INVALID_SOCKET;
 #endif
     m_IsConnected = false;
+    m_SendQueue.clear();
+    m_RecvQueue.clear();
+    m_AccumulatedBuffer.clear();
 }
 
-void NetworkManager::SetNonBlocking(SOCKET s) {
+void NetworkManager::SetNonBlocking(int s) {
 #ifdef _WIN32
     u_long mode = 1;
     ioctlsocket(s, FIONBIO, &mode);
@@ -97,150 +78,140 @@ void NetworkManager::SetNonBlocking(SOCKET s) {
 #endif
 }
 
-bool NetworkManager::Init(int port) {
+// [변경] 클라이언트 모드로 접속 (IP, Port)
+bool NetworkManager::Init(const std::string& ip, int port) {
 #ifdef __EMSCRIPTEN__
-    // [Web] 클라이언트로 동작 -> 중계 서버(Bridge)에 접속
-    // 주의: 로컬 테스트 시 'ws://localhost:포트' 사용
-    // 실제 배포 시에는 로봇과 통신할 수 있는 Proxy Server 주소 필요
-    if (!emscripten_websocket_is_supported()) {
-        std::cout << "[Web] WebSocket not supported!" << std::endl;
-        return false;
-    }
+    if (!emscripten_websocket_is_supported()) return false;
 
-    EmscriptenWebSocketCreateAttributes attr = {
-        "ws://localhost:5555", // 접속할 주소 (Bridge Server)
-        NULL, EM_TRUE
-    };
-
+    // 웹은 ws:// 프로토콜 사용
+    // (주의: 로컬 테스트 시 localhost, 배포 시 서버 IP 필요)
+    std::string url = "ws://" + ip + ":" + std::to_string(5555); // 웹 포트는 보통 다름
+    EmscriptenWebSocketCreateAttributes attr = { url.c_str(), NULL, EM_TRUE };
+    
     m_WebSocket = emscripten_websocket_new(&attr);
     if (m_WebSocket <= 0) return false;
 
-    // 콜백 등록
     emscripten_websocket_set_onopen_callback(m_WebSocket, (void*)this, OnOpen);
     emscripten_websocket_set_onmessage_callback(m_WebSocket, (void*)this, OnMessage);
     emscripten_websocket_set_onclose_callback(m_WebSocket, (void*)this, OnClose);
-
+    
+    m_IsConnected = true; 
     return true;
-
 #else
-    // [Desktop] TCP 서버로 동작
-    m_ListenSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (m_ListenSocket == INVALID_SOCKET) return false;
-
-    // SO_REUSEADDR (재시작 시 포트 점유 에러 방지)
-    int opt = 1;
-    setsockopt(m_ListenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
+    // [PC] TCP 클라이언트 모드
+    m_Socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (m_Socket == -1) return false;
 
     sockaddr_in serverAddr = {};
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(port);
+    inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr);
 
-    if (bind(m_ListenSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        std::cerr << "[TCP] Bind Failed\n";
+    // 접속 시도 (Blocking)
+    std::cout << ">>> [Network] Connecting to " << ip << ":" << port << "..." << std::endl;
+    if (connect(m_Socket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cout << ">>> [Network] Connection Failed!" << std::endl;
         return false;
     }
 
-    listen(m_ListenSocket, 1);
-    SetNonBlocking(m_ListenSocket);
-    
-    std::cout << "[TCP] Server Started on port " << port << std::endl;
+    std::cout << ">>> [Network] Connected to Bridge Server!" << std::endl;
+    SetNonBlocking(m_Socket); // 접속 후 Non-blocking 전환
+    m_IsConnected = true;
     return true;
 #endif
 }
 
+void NetworkManager::Send(const std::string& msg) {
+    // [Write Queue] 바로 보내지 않고 큐에 저장
+    if (m_IsConnected) {
+        m_SendQueue.push_back(msg);
+    }
+}
+
 void NetworkManager::Update() {
-#ifdef __EMSCRIPTEN__
-    // 웹소켓 콜백이 자동으로 m_MessageQueue에 넣도록 처리 필요 (여기선 생략)
-#else
-    // [PC 서버 로직]
-    if (m_ClientSocket == INVALID_SOCKET) {
-        // 접속 대기 (기존 코드 유지)
-        sockaddr_in clientAddr;
-        int clientLen = sizeof(clientAddr);
-        SOCKET newClient = accept(m_ListenSocket, (sockaddr*)&clientAddr, &clientLen);
-        if (newClient != INVALID_SOCKET) {
-            std::cout << "[Network] Client Connected!" << std::endl;
-            m_ClientSocket = newClient;
-            SetNonBlocking(m_ClientSocket);
-            m_IsConnected = true;
-        }
-    } else {
-        // 데이터 수신
-        char buf[4096];
-        int len = recv(m_ClientSocket, buf, sizeof(buf) - 1, 0);
-        
-        if (len > 0) {
-            buf[len] = '\0';
+    // -----------------------------------------------------
+    // 1. Write Queue 처리 (보낼 메시지 전송)
+    // -----------------------------------------------------
+    if (m_IsConnected && !m_SendQueue.empty()) {
+        while (!m_SendQueue.empty()) {
+            std::string msg = m_SendQueue.front();
+            m_SendQueue.pop_front();
             
-            // [핵심] 버퍼에 이어 붙이기
-            m_AccumulatedBuffer += buf;
+            std::string finalMsg = msg + "\n"; // 개행 문자 추가
+            
+            #ifdef __EMSCRIPTEN__
+            if (m_WebSocket > 0) {
+                unsigned short state;
+                emscripten_websocket_get_ready_state(m_WebSocket, &state);
+                if (state == 1) // OPEN
+                    emscripten_websocket_send_utf8_text(m_WebSocket, finalMsg.c_str());
+            }
+            #else
+            if (m_Socket != -1) {
+                send(m_Socket, finalMsg.c_str(), (int)finalMsg.size(), 0);
+            }
+            #endif
+        }
+    }
 
-            // [핵심] 개행(\n) 기준으로 잘라서 큐에 넣기
-            size_t pos = 0;
-            while ((pos = m_AccumulatedBuffer.find('\n')) != std::string::npos) {
-                std::string packet = m_AccumulatedBuffer.substr(0, pos);
-                if (!packet.empty()) {
-                    m_MessageQueue.push_back(packet);
+    // -----------------------------------------------------
+    // 2. Read Queue 처리 (수신 및 파싱)
+    // -----------------------------------------------------
+    #ifdef __EMSCRIPTEN__
+        // 웹은 콜백에서 처리됨
+        if (m_WebSocket > 0) {
+            unsigned short state;
+            emscripten_websocket_get_ready_state(m_WebSocket, &state);
+            m_IsConnected = (state == 1);
+        }
+    #else
+        // PC 소켓 수신
+        if (m_Socket != -1 && m_IsConnected) {
+            char buf[4096];
+            int len = recv(m_Socket, buf, sizeof(buf) - 1, 0);
+            
+            if (len > 0) {
+                buf[len] = '\0';
+                m_AccumulatedBuffer += buf;
+                
+                // 패킷 파싱 (개행 기준)
+                size_t pos = 0;
+                while ((pos = m_AccumulatedBuffer.find('\n')) != std::string::npos) {
+                    std::string packet = m_AccumulatedBuffer.substr(0, pos);
+                    if (!packet.empty()) {
+                        PushToRecvQueue(packet);
+                    }
+                    m_AccumulatedBuffer.erase(0, pos + 1);
                 }
-                // 처리한 부분 삭제
-                m_AccumulatedBuffer.erase(0, pos + 1);
-            }
-
-            // [방어 코드] 버퍼가 너무 커지면(쓰레기 데이터 유입 시) 비워버림
-            if (m_AccumulatedBuffer.size() > 10000) {
-                std::cout << ">>> [Warning] Buffer overflow! Clearing garbage." << std::endl;
-                m_AccumulatedBuffer.clear();
-            }
-        } else if (len == 0) {
-            std::cout << ">>> [Network] Connection Closed by Client." << std::endl;
-            Close();
-        } else {
-            // [중요] 에러 처리 (len == -1)
-            int err = WSAGetLastError();
-            // WSAEWOULDBLOCK(10035)은 "데이터 없음(정상)"이므로 무시
-            if (err != WSAEWOULDBLOCK) {
-                std::cout << ">>> [Network] Socket Error: " << err << std::endl;
+            } 
+            else if (len == 0) {
+                std::cout << ">>> [Network] Server Disconnected." << std::endl;
                 Close();
             }
+            else {
+                #ifdef _WIN32
+                int err = WSAGetLastError();
+                if (err != WSAEWOULDBLOCK) Close();
+                #endif
+            }
         }
-    }
-#endif
+    #endif
 }
 
+bool NetworkManager::IsConnected() const { return m_IsConnected; }
 
-void NetworkManager::Send(const std::string& msg) {
-    std::string finalMsg = msg + "\n";
-#ifdef __EMSCRIPTEN__
-    if (m_WebSocket > 0) {
-        emscripten_websocket_send_utf8_text(m_WebSocket, finalMsg.c_str());
-    }
-#else
-    if (m_ClientSocket != INVALID_SOCKET) {
-        send(m_ClientSocket, finalMsg.c_str(), (int)finalMsg.size(), 0);
-    }
-#endif
+void NetworkManager::PushToRecvQueue(const std::string& packet) {
+    if (m_RecvQueue.size() > 100) m_RecvQueue.pop_front();
+    m_RecvQueue.push_back(packet);
 }
-
-bool NetworkManager::IsConnected() const {
-#ifdef __EMSCRIPTEN__
-    // 웹소켓 상태 확인 (1 = OPEN)
-    unsigned short state = 0;
-    emscripten_websocket_get_ready_state(m_WebSocket, &state);
-    return state == 1; 
-#else
-    return m_IsConnected;
-#endif
-}
-
 
 bool NetworkManager::HasMessage() {
-    return !m_MessageQueue.empty();
+    return !m_RecvQueue.empty();
 }
 
 std::string NetworkManager::PopMessage() {
-    if (m_MessageQueue.empty()) return "";
-    std::string msg = m_MessageQueue.front();
-    m_MessageQueue.pop_front();
+    if (m_RecvQueue.empty()) return "";
+    std::string msg = m_RecvQueue.front();
+    m_RecvQueue.pop_front();
     return msg;
 }
