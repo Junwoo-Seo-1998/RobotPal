@@ -3,6 +3,8 @@
 #
 include(FetchContent)
 
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
 
 
 FetchContent_Declare(
@@ -41,6 +43,22 @@ add_library(imgui STATIC
 )
 
 target_include_directories(imgui PUBLIC ${imgui_external_SOURCE_DIR} ${imgui_external_SOURCE_DIR}/backends/)
+
+
+if(EMSCRIPTEN)
+    # 환경 변수가 이미 설정되어 있지 않다면 자동 감지 시도
+    if("$ENV{EMSCRIPTEN}" STREQUAL "")
+        message(STATUS "EMSCRIPTEN environment variable not found. Auto-detecting...")
+        
+        # 현재 CMake가 사용 중인 컴파일러(emcc)의 위치를 가져옴
+        get_filename_component(EMSCRIPTEN_ROOT_PATH ${CMAKE_C_COMPILER} DIRECTORY)
+        
+        # 찾은 경로를 환경 변수 EMSCRIPTEN으로 강제 설정
+        set(ENV{EMSCRIPTEN} "${EMSCRIPTEN_ROOT_PATH}")
+        
+        message(STATUS "Auto-detected EMSCRIPTEN root: ${EMSCRIPTEN_ROOT_PATH}")
+    endif()
+endif()
 
 set(DRACO_TESTS OFF CACHE BOOL "" FORCE)           # 테스트 코드 빌드 안 함
 set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)         # 자바스크립트 바인딩 안 함

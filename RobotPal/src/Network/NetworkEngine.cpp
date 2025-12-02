@@ -1,6 +1,7 @@
 #include "RobotPal/Network/NetworkEngine.h"
 
 
+
 NetworkEngine::NetworkEngine(flecs::world &world)
     : m_World(world), m_SendQueue(), m_RecvQueue(), isRunning(false), recvThread(), sendThread()
 {
@@ -11,10 +12,17 @@ NetworkEngine::NetworkEngine(flecs::world &world)
 NetworkEngine::~NetworkEngine()
 {
     Disconnect();
+#ifdef _WIN32
+    WSACleanup();
+#endif
 }
 
 void NetworkEngine::Connect(const std::string &url)
 {
+    if(isRunning) return;
+
+    std::string ip = url; // 나중에 URL 파싱 필요
+
     Start();
 }
 
