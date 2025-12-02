@@ -12,9 +12,6 @@ NetworkEngine::NetworkEngine(flecs::world &world)
 NetworkEngine::~NetworkEngine()
 {
     Disconnect();
-#ifdef _WIN32
-    WSACleanup();
-#endif
 }
 
 void NetworkEngine::Connect(const std::string &url)

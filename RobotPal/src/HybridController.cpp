@@ -12,14 +12,12 @@
 #include "RobotPal/HybridController.h"
 #include <iostream>
 
-HybridController::HybridController(Entity &Target, int port)
+HybridController::HybridController(Entity targetEntity, NetworkEngine* networkEngine)
 {
-    // 1. 시뮬레이션 컨트롤러는 '메인 로봇'을 움직임 (즉각 반응)
-    m_Sim = std::make_unique<SimController>(Target);
-
-    // 2. 리얼 컨트롤러는 '고스트 로봇'을 움직임 (실제 데이터 반영)
-    // 만약 고스트 로봇을 안 쓸 거면 ghostEntity에 빈 Entity()를 넘기면 됨
-    m_Real = std::make_unique<RealController>(Target, port);
+    m_Sim = std::make_unique<SimController>(targetEntity);
+    
+    // 받은 네트워크 엔진을 RealController에게 전달 (Injection)
+    m_Real = std::make_unique<RealController>(targetEntity, networkEngine);
 }
 
 bool HybridController::Init()

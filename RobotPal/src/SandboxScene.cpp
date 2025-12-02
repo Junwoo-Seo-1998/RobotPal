@@ -17,12 +17,15 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
+static std::unique_ptr<NetworkEngine> g_NetworkEngine;
 static std::unique_ptr<IRobotController> g_Controller;
 static Entity g_RobotEntity;
 #include <memory>
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
+    g_NetworkEngine = std::make_unique<NetworkEngine>(m_World);
+    g_NetworkEngine->Connect("127.0.0.1:12345"); // 접속 시도
 
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
     g_RobotEntity = CreateEntity("mainModel");

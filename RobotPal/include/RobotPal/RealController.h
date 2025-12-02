@@ -12,13 +12,13 @@
 #pragma once
 #include "RobotPal/RobotController.h"
 #include "RobotPal/Entity.h"
-#include "RobotPal/NetworkManager.h"
+#include "RobotPal/Network/NetworkEngine.h"
 #include <string>
 
 class RealController : public IRobotController
 {
 public:
-    RealController(Entity &entity, int port);
+    RealController::RealController(Entity entity, NetworkEngine* networkEngine);
     virtual ~RealController() = default;
 
     // [인터페이스 구현]
@@ -29,8 +29,8 @@ public:
 private:
     // 제어 대상 및 통신 모듈
     Entity m_Entity;
-    NetworkManager m_Server;
-    int m_Port;
+    // NetworkManager m_Server;
+    NetworkEngine* m_Network = nullptr;
 
     // 중복 전송 방지용 캐시 (이전 프레임의 명령값)
     float m_LastV = 0.0f;
