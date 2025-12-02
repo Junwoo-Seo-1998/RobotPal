@@ -16,6 +16,9 @@
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {
+    auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
+    m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
+
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
     auto prefabEntity = CreateEntity("mainModel");
     prefabEntity.GetHandle().is_a(modelPrefab);
@@ -61,6 +64,10 @@ void SandboxScene::OnExit()
 
 void SandboxScene::OnImGuiRender()
 {
+    ImGui::Begin("hdr");
+    ImGui::Image((void*)(intptr_t)AssetManager::Get().GetTextureHDR(AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr"))->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
+    ImGui::End();
+
     ImGui::Begin("robotCam");
     ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
     ImGui::End();

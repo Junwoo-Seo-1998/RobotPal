@@ -60,12 +60,30 @@ void Texture::Resize(int width, int height) {
 void Texture::SetData(const void* data, int size) {
     if (m_Type != TextureType::Texture2D) return;
 
-    GLenum format = (m_Format == TextureFormat::RGBA8) ? GL_RGBA : GL_RGB;
+    GLenum format = GL_RGB;
+    GLenum type = GL_UNSIGNED_BYTE; // 기본값
+
+    // 포맷에 따라 GL 상수 결정
+    switch (m_Format) {
+        case TextureFormat::RGBA8:
+            format = GL_RGBA;
+            type = GL_UNSIGNED_BYTE;
+            break;
+        case TextureFormat::RGB8:
+            format = GL_RGB;
+            type = GL_UNSIGNED_BYTE;
+            break;
+        case TextureFormat::RGB16F: // [HDR 추가]
+            format = GL_RGB;
+            type = GL_FLOAT; // float 데이터임을 명시!
+            break;
+    }
+
     glBindTexture(GL_TEXTURE_2D, m_RendererID);
     
-    // 데이터 정렬 (RGB 텍스처 등 4바이트 정렬이 아닐 경우 대비)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_Width, m_Height, format, GL_UNSIGNED_BYTE, data);
+    // 수정된 type 변수 사용
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_Width, m_Height, format, type, data);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 }
 
@@ -173,6 +191,8 @@ void Texture::CreateInternal() {
         internalFormat = GL_RGBA8; dataFormat = GL_RGBA; dataType = GL_UNSIGNED_BYTE;
     } else if (m_Format == TextureFormat::RGB8) {
         internalFormat = GL_RGB8; dataFormat = GL_RGB; dataType = GL_UNSIGNED_BYTE;
+    } else if (m_Format == TextureFormat::RGB16F) {
+        internalFormat = GL_RGB16F; dataFormat = GL_RGB; dataType = GL_FLOAT;
     } else if (m_Format == TextureFormat::DEPTH24_STENCIL8) {
         internalFormat = GL_DEPTH24_STENCIL8; dataFormat = GL_DEPTH_STENCIL; dataType = GL_UNSIGNED_INT_24_8;
     }

@@ -1,6 +1,8 @@
 #include "RobotPal/Systems/RenderSystemModule.h"
 #include "RobotPal/Components/Components.h"
+#include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/AssetManager.h"
+#include "RobotPal/Core/IBLBaker.h"
 #include <glad/gles2.h>
 
 RenderSystemModule::RenderSystemModule(flecs::world &world)
@@ -67,30 +69,44 @@ RenderSystemModule::RenderSystemModule(flecs::world &world)
             //std::cout << "화면 크기가 변경됨! " << win.width << "x" << win.height << std::endl;
             m_WindowSize = win; });
 
+    world.observer<const Skybox>("OnSkyboxChange")
+        .event(flecs::OnSet)
+        .each([&](flecs::entity e, const Skybox &skybox)
+              {
+            // 1. 굽기 (기존 클래스들을 활용해 내부적으로 처리)
+            GlobalLighting lighting = IBLBaker::Bake(skybox.textureID);
+            
+            // 2. 결과 저장
+            e.world().set<GlobalLighting>(lighting); });
+
+    InitSkybox();
     RegisterSystem(world);
 }
 
-
-glm::mat4 CreateViewMatrixFromWorld(const glm::mat4& worldMatrix) {
+glm::mat4 CreateViewMatrixFromWorld(const glm::mat4 &worldMatrix)
+{
     // 1. 위치(Position) 추출 (4열)
-    glm::vec3 pos =  glm::vec3(worldMatrix*glm::vec4(0.f, 0.f, 0.f, 1.f));
+    glm::vec3 pos = glm::vec3(worldMatrix * glm::vec4(0.f, 0.f, 0.f, 1.f));
 
     // 2. Forward(앞) 벡터 추출 및 정규화
     // OpenGL 메모리 레이아웃상 3열(인덱스 2)은 로컬 Z축(Backward)입니다.
     // 카메라는 -Z를 보므로, 이를 반전시켜 Forward를 구합니다.
-    glm::vec3 backward = glm::vec3(worldMatrix[2]); 
+    glm::vec3 backward = glm::vec3(worldMatrix[2]);
     glm::vec3 forward = glm::normalize(-backward); // 스케일 제거됨
 
     // 3. Right(오른쪽) 벡터 재구축 (스케일/쉐어링 제거의 핵심)
     // 월드 행렬의 X축(0열)을 쓰지 않고 외적으로 새로 구합니다.
     glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 right;
-    
+
     // 짐벌락(Gimbal Lock) 예외 처리: 카메라가 수직으로 위/아래를 볼 때
-    if (glm::abs(glm::dot(forward, worldUp)) > 0.999f) {
+    if (glm::abs(glm::dot(forward, worldUp)) > 0.999f)
+    {
         // 위를 보고 있으면 Right를 임의의 축(예: X축)으로 설정
         right = glm::vec3(1.0f, 0.0f, 0.0f);
-    } else {
+    }
+    else
+    {
         right = glm::normalize(glm::cross(forward, worldUp));
     }
 
@@ -115,7 +131,7 @@ glm::mat4 CreateViewMatrixFromWorld(const glm::mat4& worldMatrix) {
     // Backward Vector (3행) - OpenGL 뷰 공간은 Z가 뒤쪽을 향함
     // forward의 반대인 backward(-forward)가 필요하지만,
     // 위에서 구한 forward 벡터를 기준으로 생각하면: -forward
-    glm::vec3 viewZ = -forward; 
+    glm::vec3 viewZ = -forward;
     view[0][2] = viewZ.x;
     view[1][2] = viewZ.y;
     view[2][2] = viewZ.z;
@@ -125,12 +141,11 @@ glm::mat4 CreateViewMatrixFromWorld(const glm::mat4& worldMatrix) {
     view[3][0] = -glm::dot(right, pos);
     view[3][1] = -glm::dot(up, pos);
     view[3][2] = -glm::dot(viewZ, pos);
-    
+
     // 마지막 3,3은 1.0f (초기화시 설정됨)
 
     return view;
 }
-
 
 void RenderSystemModule::RegisterSystem(flecs::world &world)
 {
@@ -210,8 +225,36 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
                 }
             });
         }
+
+        auto env=world.try_get<GlobalLighting>();
+        if (env && env->environmentMap) { // IBL 데이터가 있을 때만
+                 
+                // 중요: 깊이 함수를 LEQUAL로 변경 
+                // (Skybox는 z=1.0인데 초기화 값도 1.0이므로 '같거나 작음'이어야 그려짐)
+                glDepthFunc(GL_LEQUAL);
+                 
+                 m_SkyboxShader->Bind();
+                 m_SkyboxShader->SetMat4("u_View", viewMatrix);
+                 m_SkyboxShader->SetMat4("u_Projection", projection);
+                 m_SkyboxShader->SetFloat("u_Intensity", env->intensity);
+
+                 // 텍스처 바인딩
+                 auto envTex = AssetManager::Get().GetTextureHDR(env->environmentMap);
+                 if(envTex) {
+                     envTex->Bind(0);
+                     m_SkyboxShader->SetInt("u_EnvironmentMap", 0);
+                     
+                     // 큐브 그리기
+                     m_SkyboxVAO->Bind();
+                     glDrawArrays(GL_TRIANGLES, 0, 36);
+                     m_SkyboxVAO->UnBind();
+                 }
+
+                 // 깊이 함수 원복 (다음 프레임을 위해)
+                 glDepthFunc(GL_LESS);
+             }
         // 타겟 언바인딩 (필요시)
-        if (target && target->fbo) target->fbo->Unbind(); 
+        if (target && target->fbo) target->fbo->Unbind();
     });
 
     // // //todo: handle frame buffers
@@ -253,4 +296,58 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
     //         }
     //     }
     // });
+}
+void RenderSystemModule::InitSkybox()
+{
+    m_SkyboxShader = AssetManager::Get().GetShader("Assets/Shaders/Skybox.glsl");
+
+    // 2. 큐브 VAO 생성 (IBLBaker와 별도로 관리하는게 안전함)
+    float skyboxVertices[] = {
+        // positions          
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+    m_SkyboxVAO = VertexArray::Create();
+    auto vb = std::make_shared<VertexBuffer>(skyboxVertices, sizeof(skyboxVertices));
+    vb->SetLayout({{DataType::Float3, "a_Position"}});
+    m_SkyboxVAO->AddVertexBuffer(vb);
 }

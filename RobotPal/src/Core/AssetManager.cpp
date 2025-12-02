@@ -1,12 +1,45 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Core/ModelLoader.h"
 #include "RobotPal/Core/ResourceID.h"
+#include <iostream>
+#include "stb_image.h"
+
 
 AssetManager &AssetManager::Get()
 {
     static AssetManager instance;
     return instance;
 }
+
+ResourceID AssetManager::LoadTextureHDR(const std::string &path)
+{
+    ResourceID id=GetID(path);
+    if (m_TextureHDR.find(id) != m_TextureHDR.end()) return id;
+
+    int width, height, nrComponents;
+    stbi_set_flip_vertically_on_load(true);
+    float* data = stbi_loadf(path.c_str(), &width, &height, &nrComponents, 3);
+    
+    if (data) {
+        // Texture 클래스 재활용: RGB16F 포맷으로 생성
+        auto texture = std::make_shared<Texture>(width, height, data, TextureFormat::RGB16F);
+        stbi_image_free(data);
+        
+        // ID 관리 로직 (기존 GetID 등 활용)
+        m_TextureHDR[id] = texture; // m_Textures 맵이 있다고 가정
+        return id;
+    }
+    std::cout << "Failed to load HDR image." << std::endl;
+    return ResourceID(); // 실패
+}
+
+ResourceID AssetManager::AddRuntimeTextureHDR(std::shared_ptr<Texture> texture, const std::string &name)
+{
+    ResourceID id = GetID(name);
+    m_TextureHDR[id] = texture;
+    return id;
+}
+
 flecs::entity AssetManager::GetPrefab(flecs::world &ecs, const std::string &name)
 {
     if (m_Prefabs.find(name) != m_Prefabs.end()) return m_Prefabs[name];
@@ -116,6 +149,10 @@ std::shared_ptr<ModelResource> AssetManager::GetModel(const std::string &name)
     return model;
 }
 
+std::shared_ptr<Texture> AssetManager::GetTextureHDR(int id)
+{
+    return m_TextureHDR[id];
+}
 const MaterialData *AssetManager::GetMaterial(int id)
 {
     return m_Material[id];
@@ -127,6 +164,7 @@ const MeshData *AssetManager::GetMesh(int id)
 
 void AssetManager::ClearData()
 {
+    m_TextureHDR.clear();
     m_Shaders.clear();
     m_Model.clear();
     m_Mesh.clear();
