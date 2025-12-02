@@ -9,6 +9,7 @@ FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
 	GIT_TAG 	a532f5b1cf27d6a3c099437e6959cf7e398a0a67 #refs/tags/1.0.2
+    GIT_SHALLOW 1
 )
 
 FetchContent_MakeAvailable(glm)
@@ -41,11 +42,24 @@ add_library(imgui STATIC
 
 target_include_directories(imgui PUBLIC ${imgui_external_SOURCE_DIR} ${imgui_external_SOURCE_DIR}/backends/)
 
+set(DRACO_TESTS OFF CACHE BOOL "" FORCE)           # 테스트 코드 빌드 안 함
+set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)         # 자바스크립트 바인딩 안 함
+set(DRACO_WASM OFF CACHE BOOL "" FORCE)            # WebAssembly 빌드 안 함
+set(DRACO_TRANSCODER_SUPPORTED OFF CACHE BOOL "" FORCE) # 트랜스 코더(변환기) 필요 없으면 OFF
+set(DRACO_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    draco
+    GIT_REPOSITORY https://github.com/google/draco.git
+    GIT_TAG        1.5.7
+    GIT_SHALLOW 1
+)
+FetchContent_MakeAvailable(draco)
 
 FetchContent_Declare(
     tinygltf
     GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
     GIT_TAG        v2.9.7
+    GIT_SHALLOW 1
 )
 
 set(TINYGLTF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
@@ -65,11 +79,26 @@ FetchContent_Declare(
     flecs
     GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
     GIT_TAG        v4.1.2
+    GIT_SHALLOW 1
 )
 
 FetchContent_MakeAvailable(flecs)
 
 
+FetchContent_Declare(
+    stb_external
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master
+    GIT_SHALLOW 1
+)
+
+FetchContent_MakeAvailable(stb_external)
+
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${stb_external_SOURCE_DIR})
+
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
+FetchContent_MakeAvailable(json)
 
 add_library(glad STATIC ${CMAKE_SOURCE_DIR}/External/glad/src/gles2.c)
 target_include_directories(glad PUBLIC ${CMAKE_SOURCE_DIR}/External/glad/include)
@@ -89,9 +118,14 @@ target_include_directories(RobotPal PUBLIC
 
 target_link_libraries(RobotPal PRIVATE glm::glm)
 target_link_libraries(RobotPal PRIVATE glad)
+target_link_libraries(RobotPal PUBLIC draco::draco)
+target_include_directories(RobotPal PUBLIC "${CMAKE_BINARY_DIR}" ${draco_SOURCE_DIR}/src)
 target_link_libraries(RobotPal PRIVATE tinygltf)
 target_link_libraries(RobotPal PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(RobotPal PRIVATE flecs::flecs_static)
+target_link_libraries(RobotPal PRIVATE stb)
+target_link_libraries(RobotPal PRIVATE nlohmann_json::nlohmann_json)
+
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET RobotPal PROPERTY CXX_STANDARD 17)
@@ -99,6 +133,7 @@ endif()
 
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../Assets")
 message(Asset Dir: ${ASSET_DIR})
+
 
 # 플랫폼에 따라 링크 라이브러리를 다르게 설정합니다.
 if(EMSCRIPTEN)
@@ -113,6 +148,15 @@ if(EMSCRIPTEN)
     target_link_libraries(imgui PRIVATE glfw)
     target_link_libraries(RobotPal PRIVATE glfw imgui)
 
+    # 1. 컴파일러에게 "Atomis/Shared Memory" 기능을 켜라고 지시
+    add_compile_options("-pthread")
+    add_compile_options("-sPROXY_TO_PTHREAD") # __EMSCRIPTEN_PTHREADS__ 매크로 정의 등을 위해 필요
+    
+    # 2. 링커에게 스레드 풀 및 워커 생성 코드를 포함하라고 지시
+    add_link_options("-pthread")
+    add_link_options("-sPROXY_TO_PTHREAD")
+    add_link_options("-sPTHREAD_POOL_SIZE=3") # 스레드 풀 사이즈 (적절히 조절)
+
     # Emscripten 관련 속성 및 링크 플래그를 설정합니다.
     set_target_properties(RobotPal PROPERTIES SUFFIX ".html")
     target_link_options(RobotPal PRIVATE
@@ -120,8 +164,6 @@ if(EMSCRIPTEN)
         "-sFULL_ES3=1"          # WebGL 2에 OpenGL ES 3 사용
         "-sALLOW_MEMORY_GROWTH=1"
         "--use-preload-plugins" # 에셋 로딩을 위함
-        "-sPROXY_TO_PTHREAD"
-        "-sPTHREAD_POOL_SIZE=3"
     )
     target_link_options(RobotPal PRIVATE
         "-lwebsocket.js"
@@ -148,6 +190,9 @@ else()
     FetchContent_MakeAvailable(glfw)
 
     find_package(OpenGL REQUIRED)
+    find_package(Threads REQUIRED)
+
+    target_link_libraries(RobotPal PRIVATE Threads::Threads)
 
     # 3. 라이브러리 링크
     # "opengl32" 대신 "OpenGL::GL" 사용
