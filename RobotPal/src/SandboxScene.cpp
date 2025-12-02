@@ -25,7 +25,7 @@ std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
     g_NetworkEngine = std::make_unique<NetworkEngine>(m_World);
-    g_NetworkEngine->Connect("127.0.0.1:12345"); // 접속 시도
+    g_NetworkEngine->Connect("127.0.0.1:12345");
 
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
     g_RobotEntity = CreateEntity("mainModel");
@@ -54,7 +54,7 @@ void SandboxScene::OnEnter()
         robotCamera.SetParent(attachPoint);
     }
 
-    g_Controller = std::make_unique<HybridController>(g_RobotEntity, 12345);
+    g_Controller = std::make_unique<HybridController>(g_RobotEntity);
 
     if (g_Controller->Init()) {
         std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;

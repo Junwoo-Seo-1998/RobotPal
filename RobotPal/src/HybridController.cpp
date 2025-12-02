@@ -12,12 +12,11 @@
 #include "RobotPal/HybridController.h"
 #include <iostream>
 
-HybridController::HybridController(Entity targetEntity, NetworkEngine* networkEngine)
-{
+HybridController::HybridController(Entity targetEntity){
     m_Sim = std::make_unique<SimController>(targetEntity);
     
     // 받은 네트워크 엔진을 RealController에게 전달 (Injection)
-    m_Real = std::make_unique<RealController>(targetEntity, networkEngine);
+    m_Real = std::make_unique<RealController>(targetEntity);
 }
 
 bool HybridController::Init()

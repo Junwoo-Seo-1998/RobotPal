@@ -1,38 +1,22 @@
-/**
- * @file RealController.h
- * @author Hong Yoon Pyo (cgantro@gmail.com)
- * @brief 
- * @version 0.1
- * @date 2025-11-28
- * 
- * @copyright Copyright (c) 2025
- * 
- */
-
 #pragma once
 #include "RobotPal/RobotController.h"
 #include "RobotPal/Entity.h"
-#include "RobotPal/Network/NetworkEngine.h"
-#include <string>
 
 class RealController : public IRobotController
 {
 public:
-    RealController::RealController(Entity entity, NetworkEngine* networkEngine);
+    // [변경] NetworkEngine 포인터를 받지 않음 (Entity만 있으면 World 접근 가능)
+    RealController(Entity entity);
     virtual ~RealController() = default;
 
-    // [인터페이스 구현]
     virtual bool Init() override;
     virtual void Move(const float& v, const float& w) override;
     virtual void Update(const float& dt) override;
 
 private:
-    // 제어 대상 및 통신 모듈
     Entity m_Entity;
-    // NetworkManager m_Server;
-    NetworkEngine* m_Network = nullptr;
-
-    // 중복 전송 방지용 캐시 (이전 프레임의 명령값)
+    
+    // 중복 전송 방지용
     float m_LastV = 0.0f;
     float m_LastW = 0.0f;
 };

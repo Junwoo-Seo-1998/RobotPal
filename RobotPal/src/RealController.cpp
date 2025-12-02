@@ -10,28 +10,26 @@
  */
 #include "RobotPal/RealController.h"
 #include "RobotPal/Util/Movement.h" // 분리한 로직 포함
+#include "RobotPal/Network/NetworkEngine.h" // Handle 정의 포함
 #include "RobotPal/Components/Components.h"
 #include <cstdio>
 #include <iostream>
 #include <cmath>
 
 
-RealController::RealController(Entity entity, NetworkEngine* networkEngine)
-    : m_Entity(entity), m_Network(networkEngine)
+RealController::RealController(Entity entity)
+    : m_Entity(entity)
 {
 }
 
 bool RealController::Init()
 {
-    if (!m_Network) {
-        std::cout << ">>> [RealController] NetworkEngine is null!" << std::endl;
-        return false;
-    }
+    if (!m_Entity.IsValid()) return false;
     return true;
 }
 
 void RealController::Move(const float& v, const float& w)
-{
+{   
     if (std::abs(m_LastV - v) > 0.001f || std::abs(m_LastW - w) > 0.001f)
     {
         char buf[64];
@@ -41,7 +39,8 @@ void RealController::Move(const float& v, const float& w)
         std::string msg(buf);
         std::vector<uint8_t> data(msg.begin(), msg.end());
         
-        m_Network->SendPacket(data); // 화살표 연산자(->) 사용;'
+        // handle.instance->SendPacket(data);
+
         m_LastV = v;
         m_LastW = w;
     }
