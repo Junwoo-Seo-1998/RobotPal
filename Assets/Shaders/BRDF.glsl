@@ -11,12 +11,13 @@ void main()
     gl_Position = vec4(a_Position, 1.0);
 }
 
-
-
 #type fragment
 #version 300 es
-precision mediump float;
-out vec2 FragColor;
+// [중요 수정] 정밀도를 highp로 설정해야 비트 연산이 깨지지 않습니다.
+precision highp float;
+precision highp int;
+
+out vec4 FragColor;
 
 in vec2 TexCoords;
 
@@ -46,6 +47,8 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 // ----------------------------------------------------------------------------
 float RadicalInverse_VdC(uint bits) 
 {
+    // [설명] 이 비트 연산들은 32비트 정수를 필요로 합니다.
+    // mediump 환경에서는 이 연산이 오작동하여 화면이 검게 나옵니다.
     bits = (bits << 16u) | (bits >> 16u);
     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
@@ -123,5 +126,7 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
 void main() 
 {
     vec2 integratedBRDF = IntegrateBRDF(TexCoords.x, TexCoords.y);
-    FragColor = integratedBRDF;
+
+    // [변경] RG에는 계산값, B=0, A=1 로 채워서 출력
+    FragColor = vec4(integratedBRDF, 0.0, 1.0);
 }
