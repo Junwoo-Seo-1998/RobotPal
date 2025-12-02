@@ -83,7 +83,7 @@ GlobalLighting IBLBaker::Bake(ResourceID hdrTextureID) {
     GlobalLighting result;
     
     // 1. Setup Framebuffer & Matrices
-    auto captureFBO = Framebuffer::Create(512, 512, TextureFormat::RGB8, true);
+    auto captureFBO = Framebuffer::Create(512, 512, TextureFormat::RGBA16F, true);
     glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
     glm::mat4 captureViews[] =
     {
