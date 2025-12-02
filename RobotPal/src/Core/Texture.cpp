@@ -73,8 +73,8 @@ void Texture::SetData(const void* data, int size) {
             format = GL_RGB;
             type = GL_UNSIGNED_BYTE;
             break;
-        case TextureFormat::RGB16F: // [HDR 추가]
-            format = GL_RGB;
+        case TextureFormat::RGBA16F: // [HDR 추가]
+            format = GL_RGBA;
             type = GL_FLOAT; // float 데이터임을 명시!
             break;
     }
@@ -191,8 +191,8 @@ void Texture::CreateInternal() {
         internalFormat = GL_RGBA8; dataFormat = GL_RGBA; dataType = GL_UNSIGNED_BYTE;
     } else if (m_Format == TextureFormat::RGB8) {
         internalFormat = GL_RGB8; dataFormat = GL_RGB; dataType = GL_UNSIGNED_BYTE;
-    } else if (m_Format == TextureFormat::RGB16F) {
-        internalFormat = GL_RGB16F; dataFormat = GL_RGB; dataType = GL_FLOAT;
+    } else if (m_Format == TextureFormat::RGBA16F) {
+        internalFormat = GL_RGBA16F; dataFormat = GL_RGBA; dataType = GL_FLOAT;
     } else if (m_Format == TextureFormat::DEPTH24_STENCIL8) {
         internalFormat = GL_DEPTH24_STENCIL8; dataFormat = GL_DEPTH_STENCIL; dataType = GL_UNSIGNED_INT_24_8;
     }

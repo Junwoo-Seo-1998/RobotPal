@@ -18,11 +18,11 @@ ResourceID AssetManager::LoadTextureHDR(const std::string &path)
 
     int width, height, nrComponents;
     stbi_set_flip_vertically_on_load(true);
-    float* data = stbi_loadf(path.c_str(), &width, &height, &nrComponents, 3);
+    float* data = stbi_loadf(path.c_str(), &width, &height, &nrComponents, 4);
     
     if (data) {
         // Texture 클래스 재활용: RGB16F 포맷으로 생성
-        auto texture = std::make_shared<Texture>(width, height, data, TextureFormat::RGB16F);
+        auto texture = std::make_shared<Texture>(width, height, data, TextureFormat::RGBA16F);
         stbi_image_free(data);
         
         // ID 관리 로직 (기존 GetID 등 활용)

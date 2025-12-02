@@ -83,7 +83,7 @@ GlobalLighting IBLBaker::Bake(ResourceID hdrTextureID) {
     GlobalLighting result;
     
     // 1. Setup Framebuffer & Matrices
-    auto captureFBO = Framebuffer::Create(1024, 1024, TextureFormat::RGB8, true);
+    auto captureFBO = Framebuffer::Create(512, 512, TextureFormat::RGB8, true);
     glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
     glm::mat4 captureViews[] =
     {
@@ -96,8 +96,8 @@ GlobalLighting IBLBaker::Bake(ResourceID hdrTextureID) {
     };
 
     // 2. EquiToCube
-    int envSize = 1024;
-    auto envCubemap = std::make_shared<Texture>(envSize, envSize, TextureFormat::RGB16F, TextureType::TextureCube);
+    int envSize = 512;
+    auto envCubemap = std::make_shared<Texture>(envSize, envSize, TextureFormat::RGBA16F, TextureType::TextureCube);
     auto equiShader = AssetManager::Get().GetShader("./Assets/Shaders/EquiToCube.glsl");
     //auto equiShader=Shader::CreateFromSource("EquiToCube", "./Assets/Shaders/EquiToCube.vert", "./Assets/Shaders/EquiToCube.frag");
     auto hdrTex = AssetManager::Get().GetTextureHDR(hdrTextureID);
