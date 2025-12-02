@@ -1,12 +1,18 @@
 #ifndef __ASSETMANAGER_H__
 #define __ASSETMANAGER_H__
 #include "RobotPal/Core/GraphicsTypes.h"
+#include "RobotPal/Core/ResourceID.h"
+#include "RobotPal/Core/Texture.h"
 #include <unordered_map>
 #include <flecs.h>
 
 class AssetManager {
 public:
     static AssetManager& Get();
+
+    ResourceID LoadTextureHDR(const std::string& path);
+    // IBL 베이커가 만든 텍스처를 등록하고 ID를 발급받는 함수
+    ResourceID AddRuntimeTextureHDR(std::shared_ptr<Texture> texture, const std::string& name);
 
     flecs::entity GetPrefab(flecs::world &ecs, const std::string& name);
 
@@ -15,11 +21,13 @@ public:
     void AddModel(const std::string& name, std::shared_ptr<ModelResource> model);
     std::shared_ptr<ModelResource> GetModel(const std::string& name);
 
+    std::shared_ptr<Texture> GetTextureHDR(int id);
     const MaterialData* GetMaterial(int id);
     const MeshData* GetMesh(int id);
 
     void ClearData();
 private:
+    std::unordered_map<int, std::shared_ptr<Texture>> m_TextureHDR;
     std::unordered_map<std::string, flecs::entity> m_Prefabs;
     std::unordered_map<std::string, std::shared_ptr<ModelResource>> m_Model;
     std::unordered_map<int, MaterialData*> m_Material;

@@ -25,6 +25,9 @@ public:
 
     // 렌더링 시작
     void Bind();
+
+    // 큐브맵 렌더링할때
+    void BindTextureFace(std::shared_ptr<Texture> texture, int faceIndex = 0, int mipLevel = 0);
     
     // 렌더링 종료 (기본 화면으로 복귀)
     void Unbind();

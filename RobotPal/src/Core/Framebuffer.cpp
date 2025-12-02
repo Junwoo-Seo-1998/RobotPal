@@ -58,6 +58,18 @@ void Framebuffer::Bind() {
     glViewport(0, 0, m_Width, m_Height);
 }
 
+void Framebuffer::BindTextureFace(std::shared_ptr<Texture> texture, int faceIndex, int mipLevel)
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+
+    GLenum target = GL_TEXTURE_2D;
+    if (texture->GetType() == TextureType::TextureCube) {
+        target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex;
+    }
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture->GetID(), mipLevel);
+}
+
 void Framebuffer::Unbind() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

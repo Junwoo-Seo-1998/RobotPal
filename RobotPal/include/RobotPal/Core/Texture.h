@@ -10,6 +10,7 @@
 enum class TextureFormat {
     RGB8,
     RGBA8,
+    RGBA16F,
     DEPTH24_STENCIL8 // 섀도우 맵, 뎁스 버퍼용
 };
 
