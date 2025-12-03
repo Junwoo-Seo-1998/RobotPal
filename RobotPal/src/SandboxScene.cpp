@@ -32,12 +32,10 @@ void SandboxScene::OnEnter()
 
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/jetank.glb");
     auto prefabEntity = CreateEntity("mainModel");
-    g_RobotEntity = CreateEntity("mainModel");
-    g_RobotEntity.GetHandle().is_a(modelPrefab);
+    prefabEntity.GetHandle().is_a(modelPrefab);
 
     prefabEntity.SetLocalPosition(glm::vec3(0.f, 0.f, 0.7f));
     prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
-    g_RobotEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -135.f, 0.f)));
 
     auto prefabEntity2 = CreateEntity("mainModel2");
     prefabEntity2.GetHandle().is_a(modelPrefab);
@@ -59,13 +57,13 @@ void SandboxScene::OnEnter()
                .Set<RenderTarget>({camView})
                .Set<VideoSender>({400, 400, 15.0f});
     
-    auto attachPoint=g_RobotEntity.FindChildByNameRecursive(g_RobotEntity, "Cam");
+    auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
     if(attachPoint)
     {
         robotCamera.SetParent(attachPoint);
     }
 
-    g_Controller = std::make_unique<HybridController>(g_RobotEntity);
+    g_Controller = std::make_unique<HybridController>(prefabEntity);
 
     if (g_Controller->Init()) {
         std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;
