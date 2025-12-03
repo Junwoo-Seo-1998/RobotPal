@@ -49,7 +49,8 @@ void SimController::Update(const float& dt)
     // 2. 데이터 수정 (Controller의 본분)
     glm::vec3 pos = m_Entity.GetLocalPosition();
     glm::vec3 rot = m_Entity.GetLocalRotation();
-    
+
+
     // (2) 물리 계산 (Dead Reckoning)
     // 회전 (Y축) 업데이트
     MovementMath::CalculateNextStep(pos, rot, m_CurrentV, m_CurrentW, dt);
@@ -57,6 +58,4 @@ void SimController::Update(const float& dt)
 
     m_Entity.SetLocalPosition(pos);
     m_Entity.SetLocalRotation(rot);
-
-
 }

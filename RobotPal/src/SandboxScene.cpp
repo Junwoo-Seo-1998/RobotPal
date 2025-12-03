@@ -8,6 +8,7 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Network/NetworkEngine.h"
+#include "RobotPal/Streaming/IStreamingManager.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -24,8 +25,11 @@ std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
 
-    m_StreamingManager = std::make_shared<StreamingManager>();
-    m_StreamingManager->Init();
+#ifdef __EMSCRIPTEN__
+    m_StreamingManager = IStreamingManager::Create(IStreamingManager::StreamingType::WebSocket);
+#else
+    m_StreamingManager = IStreamingManager::Create(IStreamingManager::StreamingType::TCP);
+#endif
 
 
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
@@ -105,7 +109,7 @@ void SandboxScene::OnUpdate(float dt)
             auto width = camView->GetWidth();
             auto height = camView->GetHeight();
             // The texture format is RGBA, so 4 channels.
-            m_StreamingManager->SendFrame(data, width, height, 4);
+            m_StreamingManager->SendFrame({data, width, height, 4});
         }
     }
 

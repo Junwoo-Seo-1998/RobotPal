@@ -1,5 +1,5 @@
 #pragma once
-#include "IStreamingManager.h"
+#include "RobotPal/Streaming/IStreamingManager.h"
 #include "stb_image_write.h"
 
 #ifndef __EMSCRIPTEN__
@@ -26,7 +26,7 @@ class TCPStreamingManager : public IStreamingManager
 {
 public:
     TCPStreamingManager();
-    ~TCPStreamingManager();
+    virtual ~TCPStreamingManager();
 
     void Init() override;
     void Shutdown() override;
