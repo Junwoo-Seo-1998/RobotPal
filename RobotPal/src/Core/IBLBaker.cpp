@@ -189,7 +189,6 @@ GlobalLighting IBLBaker::Bake(ResourceID hdrTextureID) {
     ResourceID envID = AssetManager::Get().AddRuntimeTextureHDR(envCubemap, "Generated/IBL_Environment");
     result.environmentMap = envID;
 
-
     if (cullEnabled) glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     glViewport(lastViewport[0], lastViewport[1], lastViewport[2], lastViewport[3]);

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <glm/glm.hpp>
+#include "RobotPal/Core/ResourceID.h"
 #include "RobotPal/VertexArray.h"
 #include "RobotPal/Shader.h"
 
@@ -38,11 +39,17 @@ struct PrimitiveData {
 };
 
 struct MaterialData {
-    int uniqueID=-1;
+    ResourceID uniqueID;
     std::string name;
     glm::vec4 baseColorFactor = glm::vec4(1.0f);
-    //int baseColorTextureIndex = -1; // 텍스처 ID (AssetManager 관리)
-    // ... metallic, roughness 등 추가
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
+    glm::vec3 emissiveFactor = glm::vec3(0.0f);
+    ResourceID baseColorTexture;          // 알베도 (RGB) + 알파 (A)
+    ResourceID metallicRoughnessTexture;  // 메탈릭(B) + 거칠기(G) (glTF 표준)
+    ResourceID normalTexture;             // 노멀 맵
+    ResourceID occlusionTexture;          // 앰비언트 오클루전 (R)
+    ResourceID emissiveTexture;           // 자가 발광 맵
 };
 
 // [2] 서브메쉬 정보 (인덱스 버퍼의 범위)
@@ -54,7 +61,7 @@ struct SubMeshInfo {
 
 // [3] 메쉬 데이터 (유니티의 Mesh 에셋)
 struct MeshData {
-    int uniqueID=-1;
+    ResourceID uniqueID;
     std::string name;
     
     // 정점 데이터 (모든 서브메쉬의 정점을 하나로 합침)

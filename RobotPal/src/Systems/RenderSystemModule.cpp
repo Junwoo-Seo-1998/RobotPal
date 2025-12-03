@@ -191,6 +191,14 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
         glm::mat4 projection = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
 
         // [1] 쉐이더 준비 (미리 컴파일된 PBR 쉐이더 가져오기)
+        constexpr int SLOT_ALBEDO = 0;
+        constexpr int SLOT_NORMAL = 1;
+        constexpr int SLOT_METALLIC_ROUGHNESS = 2;
+        constexpr int SLOT_OCCLUSION = 3;
+        constexpr int SLOT_EMISSIVE = 4;
+        constexpr int SLOT_IBL_PREFILTER = 5;
+        constexpr int SLOT_IBL_BRDF = 6;
+
         auto pbrShader = AssetManager::Get().GetShader("./Assets/Shaders/PBR.glsl");
         pbrShader->Bind();
 
@@ -198,6 +206,14 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
         pbrShader->SetMat4("u_View", viewMatrix);
         pbrShader->SetMat4("u_Projection", projection);
         pbrShader->SetFloat3("u_ViewPos", viewPos);
+
+
+        // 쉐이더 샘플러 인덱스(Slot 번호) 설정 (한 번만 설정해도 됨)
+        pbrShader->SetInt("u_BaseColorTexture", SLOT_ALBEDO);
+        pbrShader->SetInt("u_NormalTexture", SLOT_NORMAL);
+        pbrShader->SetInt("u_MetallicRoughnessTexture", SLOT_METALLIC_ROUGHNESS);
+        pbrShader->SetInt("u_OcclusionTexture", SLOT_OCCLUSION);
+        pbrShader->SetInt("u_EmissiveTexture", SLOT_EMISSIVE);
 
         // [3] IBL 데이터 바인딩 (GlobalLighting 컴포넌트)
         // ECS 월드에서 GlobalLighting 데이터(싱글톤)를 가져옵니다.
@@ -216,15 +232,15 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
             // 텍스처 객체를 가져와서 바인딩 (ID만 있으면 AssetManager 통해서 가져옴)
             auto prefilterTex = AssetManager::Get().GetTextureHDR(ibl->prefilteredMap);
             if (prefilterTex) {
-                prefilterTex->Bind(5); // Slot 5 활성화
-                pbrShader->SetInt("u_PrefilterMap", 5);
+                prefilterTex->Bind(SLOT_IBL_PREFILTER);
+                pbrShader->SetInt("u_PrefilterMap", SLOT_IBL_PREFILTER);
             }
 
             // 3-3. Specular: BRDF LUT (Slot 6)
             auto brdfTex = AssetManager::Get().GetTextureHDR(ibl->brdfLUT);
             if (brdfTex) {
-                brdfTex->Bind(6); // Slot 6 활성화
-                pbrShader->SetInt("u_BRDFLUT", 6);
+                brdfTex->Bind(SLOT_IBL_BRDF);
+                pbrShader->SetInt("u_BRDFLUT", SLOT_IBL_BRDF);
             }
         } 
         else 
@@ -260,18 +276,43 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
                     {
                         // PBR 재질 속성 전송
                         // glTF 로더가 파싱한 값들 (없으면 기본값 사용)
-                        pbrShader->SetFloat3("u_Albedo", glm::vec3(mat->baseColorFactor)); 
-                        pbrShader->SetFloat("u_Metallic", 1.0f);
-                        pbrShader->SetFloat("u_Roughness", 1.0f);
-                        pbrShader->SetFloat("u_AO", 1.0f); // AO 맵이 없다면 기본 1.0
+                        pbrShader->SetFloat4("u_BaseColorFactor", mat->baseColorFactor);
+                        pbrShader->SetFloat("u_MetallicFactor", mat->metallicFactor);
+                        pbrShader->SetFloat("u_RoughnessFactor", mat->roughnessFactor);
+                        pbrShader->SetFloat3("u_EmissiveFactor", mat->emissiveFactor);
+
+                        // --- 2. 텍스처 바인딩 및 플래그 설정 ---
+                
+                        // Helper Lambda: 텍스처 바인딩 로직 중복 제거
+                        auto BindTex = [&](ResourceID id, int slot, const std::string& flagName) {
+                            bool hasTex = false;
+                            if (id) { // ID가 0이 아니면 유효하다고 가정
+                                auto tex = AssetManager::Get().GetTexture(id); // 일반 텍스처 가져오는 함수 필요
+                                if (tex) {
+                                    tex->Bind(slot);
+                                    hasTex = true;
+                                }
+                            }
+                            pbrShader->SetInt(flagName, hasTex ? 1 : 0);
+                        };
+
+                        BindTex(mat->baseColorTexture, SLOT_ALBEDO, "u_HasBaseColorTex");
+                        BindTex(mat->normalTexture, SLOT_NORMAL, "u_HasNormalTex");
+                        BindTex(mat->metallicRoughnessTexture, SLOT_METALLIC_ROUGHNESS, "u_HasMetallicRoughnessTex");
+                        BindTex(mat->occlusionTexture, SLOT_OCCLUSION, "u_HasOcclusionTex");
+                        BindTex(mat->emissiveTexture, SLOT_EMISSIVE, "u_HasEmissiveTex");
                     } 
                     else 
                     {
                         // 재질이 없는 경우 기본값 (핑크색 등)
-                        pbrShader->SetFloat3("u_Albedo", {1.0f, 0.0f, 1.0f});
-                        pbrShader->SetFloat("u_Metallic", 0.0f);
-                        pbrShader->SetFloat("u_Roughness", 0.5f);
-                        pbrShader->SetFloat("u_AO", 1.0f);
+                        pbrShader->SetFloat4("u_BaseColorFactor", {1.0f, 0.0f, 1.0f, 1.0f}); // 마젠타
+                        pbrShader->SetFloat("u_MetallicFactor", 0.0f);
+                        pbrShader->SetFloat("u_RoughnessFactor", 0.5f);
+                        pbrShader->SetInt("u_HasBaseColorTex", 0); // 텍스처 끔
+                        pbrShader->SetInt("u_HasNormalTex", 0);
+                        pbrShader->SetInt("u_HasMetallicRoughnessTex", 0);
+                        pbrShader->SetInt("u_HasOcclusionTex", 0);
+                        pbrShader->SetInt("u_HasEmissiveTex", 0);
                     }
 
                     glDrawElements(GL_TRIANGLES,

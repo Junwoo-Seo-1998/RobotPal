@@ -2,10 +2,30 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Core/GraphicsTypes.h"
+#include "RobotPal/Core/Texture.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <vector>
 #include <iostream>
+#include <memory>
+ResourceID LoadTextureFromGLTF(tinygltf::Model& model, int textureIndex, const std::string& modelName, const std::string& suffix) {
+    if (textureIndex < 0) return ResourceID(); // 텍스처 없음
+
+    const auto& texture = model.textures[textureIndex];
+    const auto& image = model.images[texture.source];
+
+    // 이름 생성: "모델명/텍스처_이미지이름" (중복 방지)
+    std::string texName = modelName + "/Texture_" + (image.name.empty() ? std::to_string(texture.source) : image.name) + "_" + suffix;
+    
+    int channels=image.component;
+    TextureFormat format = TextureFormat::RGBA8;
+    if (channels == 3) format = TextureFormat::RGB8;
+    else if (channels == 4) format = TextureFormat::RGBA8;
+
+    auto tex=std::make_shared<Texture>(image.width, image.height, image.image.data(), format);
+    // AssetManager를 통해 생성 및 등록
+    return AssetManager::Get().AddRuntimeTexture(tex, texName);
+}
 
 bool ModelLoader::LoadModelData(const std::string &path, ModelResource &outResource)
 {
@@ -25,6 +45,43 @@ bool ModelLoader::LoadModelData(const std::string &path, ModelResource &outResou
         {
             auto& d=mat.pbrMetallicRoughness.baseColorFactor;
             mData.baseColorFactor=glm::vec4(d[0], d[1], d[2], d[3]);
+        }
+        {
+            mData.metallicFactor=(float)mat.pbrMetallicRoughness.metallicFactor;
+        }
+
+        {
+            mData.roughnessFactor=(float)mat.pbrMetallicRoughness.roughnessFactor;
+        }
+
+        {
+            auto& d=mat.emissiveFactor;
+            mData.emissiveFactor=glm::vec3(d[0], d[1], d[2]);
+        }
+        
+        {
+            int albedoIdx = mat.pbrMetallicRoughness.baseColorTexture.index;
+            mData.baseColorTexture = LoadTextureFromGLTF(model, albedoIdx, path, "Albedo");
+        }
+
+        {
+            int normalIdx = mat.normalTexture.index;
+            mData.normalTexture = LoadTextureFromGLTF(model, normalIdx, path, "Normal");
+        }
+
+        {
+            int mrIdx = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+            mData.metallicRoughnessTexture = LoadTextureFromGLTF(model, mrIdx, path, "MetallicRoughness");
+        }
+
+        {
+            int ocIdx = mat.occlusionTexture.index;
+            mData.occlusionTexture = LoadTextureFromGLTF(model, ocIdx, path, "Occlusion");
+        }
+
+        {
+            int emIdx = mat.emissiveTexture.index;
+            mData.emissiveTexture = LoadTextureFromGLTF(model, emIdx, path, "Emissive");
         }
         outResource.materials.push_back(mData);
     }
