@@ -75,11 +75,12 @@ void SandboxScene::OnUpdate(float dt)
     float v = 0.0f;
     float w = 0.0f;
     GLFWwindow* window = glfwGetCurrentContext();
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) v = 2.0f;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) v = -2.0f;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) w = 2.0f;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) w = -2.0f;
+    float speed = 1.0f; 
+    float turn_speed = 2.5f;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) v = speed;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) v = -speed;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) w = turn_speed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) w = -turn_speed;
 
     // -------------------------------------------------------
     // [2] 드라이버 업데이트 (Logic)
