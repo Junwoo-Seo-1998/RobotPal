@@ -1,2 +1,2 @@
 # RobotPal
-Robot Arm IK Demo
+![Demo](./.github/assets/demo.webp)
