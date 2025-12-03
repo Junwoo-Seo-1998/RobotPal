@@ -23,11 +23,13 @@ void SandboxScene::OnEnter()
     auto prefabEntity = CreateEntity("mainModel");
     prefabEntity.GetHandle().is_a(modelPrefab);
 
-    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -135.f, 0.f)));
+    prefabEntity.SetLocalPosition(glm::vec3(0.f, 0.f, 0.7f));
+    prefabEntity.SetLocalRotation(glm::radians(glm::vec3(0.f, -90.f, 0.f)));
 
     auto prefabEntity2 = CreateEntity("mainModel2");
     prefabEntity2.GetHandle().is_a(modelPrefab);
-    prefabEntity2.SetLocalPosition({0.2f, 0.f, 0.2f});
+    prefabEntity2.SetLocalPosition({0.4f, 0.f, 0.5f});
+    prefabEntity2.SetLocalRotation(glm::radians(glm::vec3(0.f, -211.f, 0.f)));
 
     auto mapPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/map.glb");
     auto map=CreateEntity("map");
@@ -35,7 +37,8 @@ void SandboxScene::OnEnter()
 
     auto mainCam=CreateEntity("mainCam");
     mainCam.Set<Camera>({});
-    mainCam.SetLocalPosition({0.0f, 0.5f, 1.0f});
+    mainCam.SetLocalPosition({0.1f, 0.5f, 1.1f});
+    mainCam.SetLocalRotation(glm::radians(glm::vec3(-35.f, -0.15f, 0.f)));
 
     camView=Framebuffer::Create(400, 400);
     auto robotCamera=CreateEntity("robotCam");

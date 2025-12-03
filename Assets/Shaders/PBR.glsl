@@ -16,7 +16,8 @@ uniform mat4 u_Projection;
 
 void main()
 {
-    v_TexCoords = a_TexCoords;
+    v_TexCoords = vec2(a_TexCoords.x, 1.0 - a_TexCoords.y);
+    //v_TexCoords = a_TexCoords;
     v_WorldPos = vec3(u_Model * vec4(a_Position, 1.0));
     
     // Normal Matrix
