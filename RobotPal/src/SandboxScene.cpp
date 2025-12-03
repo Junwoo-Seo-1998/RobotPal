@@ -8,7 +8,6 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Network/NetworkEngine.h"
-
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -24,8 +23,10 @@ static Entity g_RobotEntity;
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
-    g_NetworkEngine = std::make_unique<NetworkEngine>(m_World);
-    g_NetworkEngine->Connect("127.0.0.1:12345");
+
+    m_StreamingManager = std::make_shared<StreamingManager>();
+    m_StreamingManager->Init();
+
 
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
@@ -96,7 +97,17 @@ void SandboxScene::OnUpdate(float dt)
     g_Controller->Move(v, w);
     g_Controller->Update(dt);
 
-   
+   if (m_StreamingManager && m_StreamingManager->IsConnected())
+    {
+        auto data = camView->GetColorAttachment()->GetAsyncData();
+        if (!data.empty())
+        {
+            auto width = camView->GetWidth();
+            auto height = camView->GetHeight();
+            // The texture format is RGBA, so 4 channels.
+            m_StreamingManager->SendFrame(data, width, height, 4);
+        }
+    }
 
     // 모델 그리기
     // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");
@@ -112,7 +123,10 @@ void SandboxScene::OnUpdate(float dt)
 
 void SandboxScene::OnExit()
 {
-
+    if (m_StreamingManager)
+    {
+        m_StreamingManager->Shutdown();
+    }
 }
 void SandboxScene::OnImGuiRender()
 {
