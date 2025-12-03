@@ -42,15 +42,14 @@ struct MaterialData {
     ResourceID uniqueID;
     std::string name;
     glm::vec4 baseColorFactor = glm::vec4(1.0f);
-    float metallicFactor=0.f;
-    float roughnessFactor=0.5f;
-    // ResourceID baseColorTexture=0;          // 알베도 (RGB) + 알파 (A)
-    // ResourceID metallicRoughnessTexture=0;  // 메탈릭(B) + 거칠기(G) (glTF 표준)
-    // ResourceID normalTexture=0;             // 노멀 맵
-    // ResourceID occlusionTexture=0;          // 앰비언트 오클루전 (R)
-    // ResourceID emissiveTexture=0;           // 자가 발광 맵
-
-    // ... metallic, roughness 등 추가
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
+    glm::vec3 emissiveFactor = glm::vec3(0.0f);
+    ResourceID baseColorTexture;          // 알베도 (RGB) + 알파 (A)
+    ResourceID metallicRoughnessTexture;  // 메탈릭(B) + 거칠기(G) (glTF 표준)
+    ResourceID normalTexture;             // 노멀 맵
+    ResourceID occlusionTexture;          // 앰비언트 오클루전 (R)
+    ResourceID emissiveTexture;           // 자가 발광 맵
 };
 
 // [2] 서브메쉬 정보 (인덱스 버퍼의 범위)

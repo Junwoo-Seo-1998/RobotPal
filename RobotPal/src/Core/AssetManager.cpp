@@ -40,6 +40,13 @@ ResourceID AssetManager::AddRuntimeTextureHDR(std::shared_ptr<Texture> texture, 
     return id;
 }
 
+ResourceID AssetManager::AddRuntimeTexture(std::shared_ptr<Texture> texture, const std::string &name)
+{
+    ResourceID id(name);
+    m_Texture[id] = texture;
+    return id;
+}
+
 flecs::entity AssetManager::GetPrefab(flecs::world &ecs, const std::string &name)
 {
     if (m_Prefabs.find(name) != m_Prefabs.end()) return m_Prefabs[name];
@@ -153,6 +160,12 @@ std::shared_ptr<Texture> AssetManager::GetTextureHDR(ResourceID id)
 {
     return m_TextureHDR[id];
 }
+
+std::shared_ptr<Texture> AssetManager::GetTexture(ResourceID id)
+{
+    return m_Texture[id];
+}
+
 const MaterialData *AssetManager::GetMaterial(ResourceID id)
 {
     return m_Material[id];
@@ -165,6 +178,7 @@ const MeshData *AssetManager::GetMesh(ResourceID id)
 void AssetManager::ClearData()
 {
     m_TextureHDR.clear();
+    m_Texture.clear();
     m_Shaders.clear();
     m_Model.clear();
     m_Mesh.clear();
