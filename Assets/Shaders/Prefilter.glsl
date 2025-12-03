@@ -13,12 +13,12 @@ void main()
     gl_Position = projection * view * vec4(localPos, 1.0);
 }
 
-
 #type fragment
 #version 300 es
-precision mediump float;
-out vec4 FragColor;
+precision highp float;
+precision highp int;
 
+out vec4 FragColor;
 in vec3 localPos;
 
 uniform samplerCube environmentMap;
@@ -27,7 +27,20 @@ uniform float roughness;
 const float PI = 3.14159265359;
 
 // ----------------------------------------------------------------------------
-// Van Der Corpus sequence for Hammersley
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+// ----------------------------------------------------------------------------
 float RadicalInverse_VdC(uint bits) 
 {
     bits = (bits << 16u) | (bits >> 16u);
@@ -35,7 +48,7 @@ float RadicalInverse_VdC(uint bits)
     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
     bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
     bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+    return float(bits) * 2.3283064365386963e-10;
 }
 // ----------------------------------------------------------------------------
 vec2 Hammersley(uint i, uint N)
@@ -46,18 +59,15 @@ vec2 Hammersley(uint i, uint N)
 vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 {
     float a = roughness*roughness;
-    
     float phi = 2.0 * PI * Xi.x;
     float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
     float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
     
-    // from spherical coordinates to cartesian coordinates
     vec3 H;
     H.x = cos(phi) * sinTheta;
     H.y = sin(phi) * sinTheta;
     H.z = cosTheta;
     
-    // from tangent-space vector to world-space sample vector
     vec3 up        = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
     vec3 tangent   = normalize(cross(up, N));
     vec3 bitangent = cross(N, tangent);
@@ -72,7 +82,8 @@ void main()
     vec3 R = N;
     vec3 V = R;
 
-    const uint SAMPLE_COUNT = 1024u;
+    // [권장] 모바일/웹 환경 고려하여 샘플 수 조절 (4096 -> 1024)
+    const uint SAMPLE_COUNT = 4096u; 
     float totalWeight = 0.0;   
     vec3 prefilteredColor = vec3(0.0);     
 
@@ -85,7 +96,25 @@ void main()
         float NdotL = max(dot(N, L), 0.0);
         if(NdotL > 0.0)
         {
-            prefilteredColor += texture(environmentMap, L).rgb * NdotL;
+            float mipLevel = 0.0;
+
+            // [핵심 수정] roughness가 0보다 클 때만 위험한 계산 수행
+            if(roughness > 0.0)
+            {
+                float D   = DistributionGGX(N, H, roughness);
+                float NdotH = max(dot(N, H), 0.0);
+                float HdotV = max(dot(H, V), 0.0);
+                float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
+
+                float resolution = 512.0; 
+                float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
+                float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+
+                mipLevel = 0.5 * log2(saSample / saTexel); 
+            }
+            // else: roughness == 0이면 mipLevel은 0.0 유지
+
+            prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
             totalWeight      += NdotL;
         }
     }

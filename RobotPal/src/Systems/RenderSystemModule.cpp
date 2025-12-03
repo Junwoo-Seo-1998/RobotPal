@@ -151,10 +151,10 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
 {
     renderQuery =
         world.query_builder<const MeshFilter, const MeshRenderer, const TransformMatrix>()
-            .cached()
-            .term_at(2)
-            .second<World>()
-            .build();
+        .cached()
+        .term_at(2)
+        .second<World>()
+        .build();
 
     world.system<const Camera, const TransformMatrix, const RenderTarget *>("RenderSystem")
         .kind(flecs::OnStore)
@@ -190,33 +190,90 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
 
         glm::mat4 projection = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
 
-        // 쉐이더 바인딩 및 '공통 유니폼' 설정 (카메라 당 1회)
-        m_SimpleShader->Bind();
-        m_SimpleShader->SetMat4("u_View", viewMatrix);
-        m_SimpleShader->SetMat4("u_Projection", projection);
-        m_SimpleShader->SetFloat4("u_Color", {0.8f, 0.8f, 0.8f, 1.f}); // 조명색 등
-        m_SimpleShader->SetFloat3("u_ViewPos", viewPos);
+        // [1] 쉐이더 준비 (미리 컴파일된 PBR 쉐이더 가져오기)
+        auto pbrShader = AssetManager::Get().GetShader("./Assets/Shaders/PBR.glsl");
+        pbrShader->Bind();
 
+        // [2] 공통 유니폼 설정 (카메라 정보)
+        pbrShader->SetMat4("u_View", viewMatrix);
+        pbrShader->SetMat4("u_Projection", projection);
+        pbrShader->SetFloat3("u_ViewPos", viewPos);
 
-        // --- [C] 세상의 모든 메쉬 그리기 (Nested Loop) ---
-        // 여기서 아까 만들어둔 renderQuery를 돌립니다.
-        // 기존 코드의 'C. 메쉬 그리기' 부분이 여기 들어옵니다.
-        
+        // [3] IBL 데이터 바인딩 (GlobalLighting 컴포넌트)
+        // ECS 월드에서 GlobalLighting 데이터(싱글톤)를 가져옵니다.
+        auto ibl=world.try_get<GlobalLighting>();
+        if (ibl) 
+        {
+            pbrShader->SetInt("u_UseIBL", 1);
+
+            // 3-1. Diffuse: SH 계수 9개 전송
+            for (int i = 0; i < 9; ++i) {
+                std::string name = "u_SH[" + std::to_string(i) + "]";
+                pbrShader->SetFloat3(name, ibl->shCoeffs[i]);
+            }
+
+            // 3-2. Specular: Prefiltered Map (Slot 5)
+            // 텍스처 객체를 가져와서 바인딩 (ID만 있으면 AssetManager 통해서 가져옴)
+            auto prefilterTex = AssetManager::Get().GetTextureHDR(ibl->prefilteredMap);
+            if (prefilterTex) {
+                prefilterTex->Bind(5); // Slot 5 활성화
+                pbrShader->SetInt("u_PrefilterMap", 5);
+            }
+
+            // 3-3. Specular: BRDF LUT (Slot 6)
+            auto brdfTex = AssetManager::Get().GetTextureHDR(ibl->brdfLUT);
+            if (brdfTex) {
+                brdfTex->Bind(6); // Slot 6 활성화
+                pbrShader->SetInt("u_BRDFLUT", 6);
+            }
+        } 
+        else 
+        {
+            // IBL 데이터가 없으면 끔 (Fallback Lighting 사용)
+            pbrShader->SetInt("u_UseIBL", 0);
+        }
+
+        // [4] 메쉬 그리기 (PBR 재질 적용)
         if(renderQuery)
         {
             renderQuery.each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
             {
-                m_SimpleShader->SetMat4("u_Model", tm);
-                // 해당 메쉬의 VAO 바인딩
+                pbrShader->SetMat4("u_Model", tm);
+
+                // VAO 바인딩
                 auto meshData = AssetManager::Get().GetMesh(mf.meshID);
+                if (!meshData) return; // 안전장치
                 meshData->vao->Bind();
                 
-                // 서브메쉬 단위로 그리기
-                int index=0;
+                // 서브메쉬 순회
+                int index = 0;
                 for (const auto &sub : meshData->subMeshes)
                 {
-                    const MaterialData* mat=AssetManager::Get().GetMaterial(mr.materials[index]);
-                    m_SimpleShader->SetFloat4("u_Color", mat->baseColorFactor); // 조명색 등
+                    // 재질 데이터 가져오기
+                    const MaterialData* mat = nullptr;
+                    if (index < mr.materials.size()) 
+                    {
+                        mat = AssetManager::Get().GetMaterial(mr.materials[index]);
+                    }
+
+                    if (mat) 
+                    {
+                        // PBR 재질 속성 전송
+                        // glTF 로더가 파싱한 값들 (없으면 기본값 사용)
+                        pbrShader->SetFloat3("u_Albedo", glm::vec3(mat->baseColorFactor)); 
+                        pbrShader->SetFloat("u_Metallic", 1.0f);
+                        pbrShader->SetFloat("u_Roughness", 1.0f);
+                        pbrShader->SetFloat("u_AO", 1.0f); // AO 맵이 없다면 기본 1.0
+                    } 
+                    else 
+                    {
+                        // 재질이 없는 경우 기본값 (핑크색 등)
+                        pbrShader->SetFloat3("u_Albedo", {1.0f, 0.0f, 1.0f});
+                        pbrShader->SetFloat("u_Metallic", 0.0f);
+                        pbrShader->SetFloat("u_Roughness", 0.5f);
+                        pbrShader->SetFloat("u_AO", 1.0f);
+                    }
+
                     glDrawElements(GL_TRIANGLES,
                                 sub.indexCount,
                                 GL_UNSIGNED_INT,
@@ -227,75 +284,36 @@ void RenderSystemModule::RegisterSystem(flecs::world &world)
         }
 
         auto env=world.try_get<GlobalLighting>();
-        if (env && env->environmentMap) { // IBL 데이터가 있을 때만
+        if (env && env->environmentMap) 
+        {   // IBL 데이터가 있을 때만
+            // 중요: 깊이 함수를 LEQUAL로 변경 
+            // (Skybox는 z=1.0인데 초기화 값도 1.0이므로 '같거나 작음'이어야 그려짐)
+            glDepthFunc(GL_LEQUAL);
                  
-                // 중요: 깊이 함수를 LEQUAL로 변경 
-                // (Skybox는 z=1.0인데 초기화 값도 1.0이므로 '같거나 작음'이어야 그려짐)
-                glDepthFunc(GL_LEQUAL);
-                 
-                 m_SkyboxShader->Bind();
-                 m_SkyboxShader->SetMat4("u_View", viewMatrix);
-                 m_SkyboxShader->SetMat4("u_Projection", projection);
-                 m_SkyboxShader->SetFloat("u_Intensity", env->intensity);
+            m_SkyboxShader->Bind();
+            m_SkyboxShader->SetMat4("u_View", viewMatrix);
+            m_SkyboxShader->SetMat4("u_Projection", projection);
+            m_SkyboxShader->SetFloat("u_Intensity", env->intensity);
 
-                 // 텍스처 바인딩
-                 auto envTex = AssetManager::Get().GetTextureHDR(env->environmentMap);
-                 if(envTex) {
-                     envTex->Bind(0);
-                     m_SkyboxShader->SetInt("u_EnvironmentMap", 0);
+            // 텍스처 바인딩
+            auto envTex = AssetManager::Get().GetTextureHDR(env->environmentMap);
+            if(envTex) 
+            {
+                envTex->Bind(0);
+                m_SkyboxShader->SetInt("u_EnvironmentMap", 0);
                      
-                     // 큐브 그리기
-                     m_SkyboxVAO->Bind();
-                     glDrawArrays(GL_TRIANGLES, 0, 36);
-                     m_SkyboxVAO->UnBind();
-                 }
+                // 큐브 그리기
+                m_SkyboxVAO->Bind();
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+                m_SkyboxVAO->UnBind();
+            }
 
-                 // 깊이 함수 원복 (다음 프레임을 위해)
-                 glDepthFunc(GL_LESS);
-             }
+            // 깊이 함수 원복 (다음 프레임을 위해)
+            glDepthFunc(GL_LESS);
+        }
         // 타겟 언바인딩 (필요시)
-        if (target && target->fbo) target->fbo->Unbind();
+        if (target && target->fbo) target->fbo->Unbind(); 
     });
-
-    // // //todo: handle frame buffers
-    // world.system<const MeshFilter, const MeshRenderer, const TransformMatrix>("RenderSystem")
-    // .term_at(2).second<World>()
-    // .each([&](flecs::entity entity, const MeshFilter& mf, const MeshRenderer& mr, const TransformMatrix& tm)
-    // {
-    //     // 1. 카메라 행렬 설정
-    //     glm::vec3 viewPos = glm::vec3(0.0f, 0.5f, 1.0f);
-    //     glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-
-    //     float aspect = m_WindowSize.GetAspect();
-    //     if (aspect == 0.0f)
-    //         aspect = 1.77f; // 안전장치
-    //     glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
-
-    //     // 2. 쉐이더 공통 유니폼 설정
-    //     m_SimpleShader->Bind();
-    //     m_SimpleShader->SetMat4("u_View", view);
-    //     m_SimpleShader->SetMat4("u_Projection", projection);
-    //     m_SimpleShader->SetFloat4("u_Color", {0.8f, 0.8f, 0.8f, 1.f});
-    //     m_SimpleShader->SetFloat3("u_ViewPos", viewPos);
-
-    //     // C. 메쉬 그리기
-    //     {
-    //         m_SimpleShader->SetMat4("u_Model", tm);
-
-    //         // 해당 메쉬의 VAO 바인딩
-    //         auto meshData = AssetManager::Get().GetMesh(mf.meshID);
-    //         meshData->vao->Bind();
-
-    //         // 서브메쉬 단위로 그리기
-    //         for (const auto &sub : meshData->subMeshes)
-    //         {
-    //             glDrawElements(GL_TRIANGLES,
-    //                         sub.indexCount,
-    //                         GL_UNSIGNED_INT,
-    //                         (void *)(sub.indexStart * sizeof(uint32_t)));
-    //         }
-    //     }
-    // });
 }
 void RenderSystemModule::InitSkybox()
 {
@@ -303,49 +321,48 @@ void RenderSystemModule::InitSkybox()
 
     // 2. 큐브 VAO 생성 (IBLBaker와 별도로 관리하는게 안전함)
     float skyboxVertices[] = {
-        // positions          
-        -1.0f,  1.0f, -1.0f,
+        // positions
+        -1.0f, 1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
         -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
 
         -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
-    };
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f};
     m_SkyboxVAO = VertexArray::Create();
     auto vb = std::make_shared<VertexBuffer>(skyboxVertices, sizeof(skyboxVertices));
     vb->SetLayout({{DataType::Float3, "a_Position"}});

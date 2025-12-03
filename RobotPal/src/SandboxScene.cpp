@@ -40,6 +40,9 @@ void SandboxScene::OnEnter()
     prefabEntity2.GetHandle().is_a(modelPrefab);
     prefabEntity2.SetLocalPosition({0.2f, 0.f, 0.2f});
 
+    auto mapPrefab = AssetManager::Get().GetPrefab(m_World, "./Assets/map.glb");
+    auto map=CreateEntity("map");
+    map.GetHandle().is_a(mapPrefab);
 
     auto mainCam=CreateEntity("mainCam");
     mainCam.Set<Camera>({});
@@ -101,7 +104,7 @@ void SandboxScene::OnUpdate(float dt)
 
     //일단 이형태로 가져와서 씀
     //auto NetworkEngine=m_World.get<NetworkEngineHandle>().instance;
-    
+
 }
 
 void SandboxScene::OnExit()
@@ -110,9 +113,11 @@ void SandboxScene::OnExit()
 }
 void SandboxScene::OnImGuiRender()
 {
-    ImGui::Begin("hdr");
-    ImGui::Image((void*)(intptr_t)AssetManager::Get().GetTextureHDR(AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr"))->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
-    ImGui::End();
+    // ImGui::Begin("baked IBL");
+    // //ImGui::Image((void*)(intptr_t)AssetManager::Get().GetTextureHDR(GetID("./Assets/airport.hdr"))->GetID(), ImVec2(200, 100), ImVec2(0, 0), ImVec2(1, -1));
+    // ImGui::Image((void*)(intptr_t)AssetManager::Get().GetTextureHDR(GetID("Generated/IBL_Environment"))->GetID(), ImVec2(100, 100), ImVec2(0, 0), ImVec2(1, -1));
+    // ImGui::Image((void*)(intptr_t)AssetManager::Get().GetTextureHDR(GetID("IBL_BRDF_LUT"))->GetID(), ImVec2(100, 100), ImVec2(0, 0), ImVec2(1, -1));
+    // ImGui::End();
 
     ImGui::Begin("robotCam");
     ImGui::Image((void*)(intptr_t)camView->GetColorAttachment()->GetID(), ImVec2(400, 400), ImVec2(0, 0), ImVec2(1, -1));
