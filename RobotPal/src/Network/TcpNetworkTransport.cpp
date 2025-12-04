@@ -86,6 +86,7 @@ void TcpNetworkTransport::Disconnect()
 
 void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
 {
+    
     if (!m_IsConnected || data.empty()) return;
 
     const char* ptr = (const char*)data.data();
@@ -103,7 +104,8 @@ void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
             return;
         }
         ptr += sent;
-        left -= sent;
+        left -= sent;   
     }
+    Sleep(16);
 }
 #endif

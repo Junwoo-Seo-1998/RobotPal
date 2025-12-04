@@ -26,15 +26,10 @@ static Entity g_RobotEntity;
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
-
-#ifdef __EMSCRIPTEN__
-    m_StreamingManager = IStreamingManager::Create(IStreamingManager::StreamingType::WebSocket);
-#else
-    m_StreamingManager = IStreamingManager::Create(IStreamingManager::StreamingType::TCP);
-#endif
+    m_StreamingManager = IStreamingManager::Create();
 
     m_StreamingManager->Init();
-    m_StreamingManager->ConnectToServer("");
+    m_StreamingManager->ConnectToServer("127.0.0.1:9998");
 
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
@@ -113,7 +108,7 @@ void SandboxScene::OnUpdate(float dt)
             auto width = camView->GetWidth();
             auto height = camView->GetHeight();
             // The texture format is RGBA, so 4 channels.
-            m_StreamingManager->SendFrame({data, width, height, 4});
+            m_StreamingManager->SendFrame({data, width, height, 3});
         }
     }
 
