@@ -14,6 +14,7 @@ static uint32_t DataTypeSize(DataType type)
 {
 	switch (type)
 	{
+		case DataType::None:	return 0;
 		case DataType::Bool:	return 1;
 		case DataType::Int:		return 4;
 		case DataType::Int2:	return 4 * 2;
@@ -46,6 +47,7 @@ struct BufferElement
 	{
 		switch (Type)
 		{
+			case DataType::None:	return 0;
 			case DataType::Bool:	return 1;
 			case DataType::Int:		return 1;
 			case DataType::Int2:	return 2;

@@ -36,7 +36,9 @@ bool Window::Init()
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
     gladLoadGLES2(glfwGetProcAddress);
+#ifndef __EMSCRIPTEN__
     glfwSwapInterval(1); // Enable vsync
+#endif
 
     m_WindowHandle=window;
     return true;

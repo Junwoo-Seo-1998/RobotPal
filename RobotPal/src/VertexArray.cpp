@@ -5,6 +5,7 @@ static GLenum ShaderDataTypeToOpenGLBaseType(DataType type)
 {
 	switch (type)
 	{
+		case DataType::None:	return 0;
 		case DataType::Bool:	return GL_BOOL;
 		case DataType::Int:		return GL_INT;
 		case DataType::Int2:	return GL_INT;
