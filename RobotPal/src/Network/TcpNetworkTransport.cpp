@@ -106,6 +106,6 @@ void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
         ptr += sent;
         left -= sent;   
     }
-    Sleep(16);
+   
 }
 #endif

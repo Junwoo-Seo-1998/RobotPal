@@ -16,7 +16,7 @@ NetworkEngine::~NetworkEngine()
     Disconnect();
 }
 
-void NetworkEngine::Connect(const std::string &url)
+void NetworkEngine::Connect(const std::string &url) 
 {
     if(isRunning) return;
 
@@ -24,7 +24,7 @@ void NetworkEngine::Connect(const std::string &url)
         Start(); // 제어 스레드 시작
     }
 }
-void NetworkEngine::Disconnect()
+void NetworkEngine::Disconnect() 
 {
     Stop();
     if (m_Transport) m_Transport->Disconnect();
@@ -32,10 +32,11 @@ void NetworkEngine::Disconnect()
 bool NetworkEngine::IsConnected() const {
     return m_Transport && m_Transport->IsConnected();
 }
-void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData)
+void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData) 
 {
     if (!isRunning) return;
     m_SendQueue.Push(rawData);
+    Sleep(1);
 }
 
 std::optional<Packet> NetworkEngine::GetPacket()

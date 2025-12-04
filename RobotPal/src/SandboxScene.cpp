@@ -26,8 +26,11 @@ std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
 
-    m_StreamingManager = IStreamingManager::Create();
-
+    auto networkEngine = m_World.get_mut<NetworkEngineHandle>();
+    networkEngine.instance->Connect("127.0.0.1:9998");
+    m_StreamingManager = IStreamingManager::Create(m_World);
+    m_StreamingManager->Init();
+    
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
 
@@ -97,17 +100,17 @@ void SandboxScene::OnUpdate(float dt)
     g_Controller->Move(v, w);
     g_Controller->Update(dt);
 
-//    if (m_StreamingManager && m_StreamingManager->IsConnected())
-//     {
-//         auto data = camView->GetColorAttachment()->GetAsyncData();
-//         if (!data.empty())
-//         {
-//             auto width = camView->GetWidth();
-//             auto height = camView->GetHeight();
-//             // The texture format is RGBA, so 4 channels.
-//             m_StreamingManager->SendFrame({data, width, height, 3});
-//         }
-//     }
+   if (m_StreamingManager)
+    {
+        auto data = camView->GetColorAttachment()->GetAsyncData();
+        if (!data.empty())
+        {
+            auto width = camView->GetWidth();
+            auto height = camView->GetHeight();
+            // The texture format is RGBA, so 3 channels.
+            m_StreamingManager->SendFrame({data, width, height, 3});
+        }
+    }
 
     // 모델 그리기
     // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");

@@ -1,10 +1,14 @@
 #ifndef __NETWORKENGINE_H__
 #define __NETWORKENGINE_H__
+
 #include <flecs.h>
 #include <string>
 #include <thread>
+#include <atomic>
+
 #include "RobotPal/Network/NetworkQueue.h"
 #include "RobotPal/Network/INetworkTransport.h"
+
 enum class ConnectionStatus {
     Disconnected,
     Connecting,
@@ -15,53 +19,50 @@ enum class ConnectionStatus {
 struct NetworkConnectionState {
     ConnectionStatus status;
     char serverUrl[128];
-    float ping; // 핑 상태 (옵션)
+    float ping;
 };
-
 
 class NetworkEngine
 {
 public:
-    NetworkEngine(flecs::world& world);
+    explicit NetworkEngine(flecs::world& world);
     ~NetworkEngine();
 
+    // --- Connection ---
     void Connect(const std::string& url);
-    // [추가] 영상 스트리밍 채널 연결
     void Disconnect();
     bool IsConnected() const;
-    //파라미터는 바뀔 가능성 높음 일단
+
+    // --- TX/RX ---
     void SendPacket(const std::vector<uint8_t>& rawData);
-    std::optional<Packet> GetPacket();
-    // [System] 프레임의 마지막(EndOfFrame)이나 별도 스레드에서 호출
-    void FlushSendQueue();
+    std::optional<Packet> GetPacket();      
+    void FlushSendQueue();                  
+
 private:
+    // --- Internal Thread Control ---
     void Start();
     void Stop();
-
-    // --- [Recv Thread] ---
     void RecvLoop();
-
-    // --- [Send Thread] ---
     void SendLoop();
 
-    //지금은 송신쪽만
-    NetworkQueue m_SendQueue;
-
-    //일단 나중에 구현
-    NetworkQueue m_RecvQueue;
+private:
     flecs::world& m_World;
 
- 
     std::unique_ptr<INetworkTransport> m_Transport;
-    bool isRunning;
+
+    NetworkQueue m_SendQueue;
+    NetworkQueue m_RecvQueue;
+
+    std::atomic<bool> isRunning;
     std::thread recvThread;
     std::thread sendThread;
+
+    std::string m_CurrentUrl;
 };
 
 struct NetworkEngineHandle
 {
-    const NetworkEngine* instance;
+    NetworkEngine* instance;   // const 금지
 };
-
 
 #endif

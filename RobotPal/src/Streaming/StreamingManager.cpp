@@ -9,7 +9,9 @@
     #include <arpa/inet.h> // htonl용
 #endif
 
-StreamingManager::StreamingManager() {
+StreamingManager::StreamingManager(flecs::world& world) 
+    : m_World(world) 
+{
 }
 
 StreamingManager::~StreamingManager() {
@@ -25,6 +27,8 @@ void StreamingManager::Shutdown() {
 // [삭제] Connect/Disconnect 구현 제거
 
 void StreamingManager::SendFrame(const FrameData& frame) {
+    auto& handle = m_World.get_mut<NetworkEngineHandle>();
+
     WriteContext ctx;
     ctx.buffer.reserve(frame.width * frame.height);
 
@@ -44,7 +48,7 @@ void StreamingManager::SendFrame(const FrameData& frame) {
     packet.insert(packet.end(), size_ptr, size_ptr + 4);
     packet.insert(packet.end(), ctx.buffer.begin(), ctx.buffer.end());
 
-    m_NetworkEngine->SendPacket(packet);
+    handle.instance->SendPacket(packet);
 }
 
 void StreamingManager::write_func(void* ctx, void* data, int size) {
