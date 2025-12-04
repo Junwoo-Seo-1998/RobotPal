@@ -3,6 +3,7 @@
 #include "RobotPal/Network/INetworkTransport.h"
 #include <memory>
 #include <vector>
+#include <functional>
 
 class StreamingManager : public IStreamingManager
 {
@@ -10,17 +11,14 @@ public:
     StreamingManager();
     virtual ~StreamingManager();
 
-    void Init() override;
+    void Init(const NetworkEngine* engine) override;
     void Shutdown() override;
 
-    void ConnectToServer(const std::string& url) override;
-    void Disconnect() override;
+    // [삭제] Connect/Disconnect 오버라이드 제거
+
     void SendFrame(const FrameData& frame) override;
-
 private:
-    std::unique_ptr<INetworkTransport> m_Transport;
 
-    // JPEG 압축용 컨텍스트
     struct WriteContext {
         std::vector<uint8_t> buffer;
     };

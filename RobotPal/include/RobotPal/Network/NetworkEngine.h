@@ -26,8 +26,9 @@ public:
     ~NetworkEngine();
 
     void Connect(const std::string& url);
+    // [추가] 영상 스트리밍 채널 연결
     void Disconnect();
-
+    bool IsConnected() const;
     //파라미터는 바뀔 가능성 높음 일단
     void SendPacket(const std::vector<uint8_t>& rawData);
     std::optional<Packet> GetPacket();
@@ -50,8 +51,8 @@ private:
     NetworkQueue m_RecvQueue;
     flecs::world& m_World;
 
+ 
     std::unique_ptr<INetworkTransport> m_Transport;
-
     bool isRunning;
     std::thread recvThread;
     std::thread sendThread;

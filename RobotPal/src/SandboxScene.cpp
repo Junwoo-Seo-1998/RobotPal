@@ -1,6 +1,6 @@
 #include "RobotPal/SandboxScene.h"
 #include "RobotPal/Buffer.h"
-#include "RobotPal/SimController.h" // SimDriver 헤더
+#include "RobotPal/SimController.h" 
 #include "RobotPal/RobotController.h"
 #include "RobotPal/RealController.h"
 #include "RobotPal/HybridController.h"
@@ -19,17 +19,14 @@
 #include <memory>
 
 
-static std::unique_ptr<NetworkEngine> g_NetworkEngine;
 static std::unique_ptr<IRobotController> g_Controller;
 static Entity g_RobotEntity;
 
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
-    m_StreamingManager = IStreamingManager::Create();
 
-    m_StreamingManager->Init();
-    m_StreamingManager->ConnectToServer("127.0.0.1:9998");
+    m_StreamingManager = IStreamingManager::Create();
 
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
@@ -100,17 +97,17 @@ void SandboxScene::OnUpdate(float dt)
     g_Controller->Move(v, w);
     g_Controller->Update(dt);
 
-   if (m_StreamingManager && m_StreamingManager->IsConnected())
-    {
-        auto data = camView->GetColorAttachment()->GetAsyncData();
-        if (!data.empty())
-        {
-            auto width = camView->GetWidth();
-            auto height = camView->GetHeight();
-            // The texture format is RGBA, so 4 channels.
-            m_StreamingManager->SendFrame({data, width, height, 3});
-        }
-    }
+//    if (m_StreamingManager && m_StreamingManager->IsConnected())
+//     {
+//         auto data = camView->GetColorAttachment()->GetAsyncData();
+//         if (!data.empty())
+//         {
+//             auto width = camView->GetWidth();
+//             auto height = camView->GetHeight();
+//             // The texture format is RGBA, so 4 channels.
+//             m_StreamingManager->SendFrame({data, width, height, 3});
+//         }
+//     }
 
     // 모델 그리기
     // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");

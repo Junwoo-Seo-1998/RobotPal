@@ -43,6 +43,7 @@ void EngineApp::Init()
     m_World.import<NetworkEngine>();
     m_World.import<RenderSystemModule>();
     m_World.import<TransformSystemModule>();
+    
 }
 
 void EngineApp::MainLoop()
