@@ -5,10 +5,9 @@
 #include <memory>
 #include "RobotPal/Core/GraphicsTypes.h"
 #include "RobotPal/GlobalComponents.h"
+#include "RobotPal/Streaming/IStreamingManager.h"
 class VertexArray;
 class Shader;
-
-#include "RobotPal/StreamingManager.h"
 
 class SandboxScene : public Scene {
 public:
@@ -22,9 +21,9 @@ public:
 
     void OnImGuiRender() override;
 private:
+    std::shared_ptr<IStreamingManager> m_StreamingManager;
     Entity m_Center;
-    std::shared_ptr<StreamingManager> m_StreamingManager;
-    float m_TimeSinceLastSend = 0.f;
+    float m_timeSinceLastSend = 0.f;
 };
 
 #endif

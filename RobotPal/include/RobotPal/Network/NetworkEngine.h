@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include "RobotPal/Network/NetworkQueue.h"
+#include "RobotPal/Network/INetworkTransport.h"
 enum class ConnectionStatus {
     Disconnected,
     Connecting,
@@ -48,6 +49,8 @@ private:
     //일단 나중에 구현
     NetworkQueue m_RecvQueue;
     flecs::world& m_World;
+
+    std::unique_ptr<INetworkTransport> m_Transport;
 
     bool isRunning;
     std::thread recvThread;

@@ -29,7 +29,6 @@ async def handle_client(websocket):
 
            
             else:
-                
                 print(f" 텍스트 수신: {message}")
                 await websocket.send(f"Server received: {message}")
 

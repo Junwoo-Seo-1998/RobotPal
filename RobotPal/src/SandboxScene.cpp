@@ -1,23 +1,39 @@
 #include "RobotPal/SandboxScene.h"
 #include "RobotPal/Buffer.h"
+#include "RobotPal/SimController.h" // SimDriver 헤더
+#include "RobotPal/RobotController.h"
+#include "RobotPal/RealController.h"
+#include "RobotPal/HybridController.h"
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Network/NetworkEngine.h"
-
+#include "RobotPal/Streaming/IStreamingManager.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/quaternion.hpp> // [중요] 쿼터니언 -> 행렬 변환용
+#include <glm/gtc/quaternion.hpp>
 #include <imgui.h>
 #include "imgui_internal.h"
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <memory>
+
+
+static std::unique_ptr<NetworkEngine> g_NetworkEngine;
+static std::unique_ptr<IRobotController> g_Controller;
+static Entity g_RobotEntity;
+
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {
-    auto hdrID = AssetManager::Get().LoadTextureHDR("/Assets/airport.hdr");
+    m_StreamingManager = IStreamingManager::Create();
+    if (m_StreamingManager)
+    {
+        m_StreamingManager->Init();
+    }
+
+    auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
 
     auto modelPrefab = AssetManager::Get().GetPrefab(m_World, "/Assets/jetank.glb");
@@ -52,45 +68,66 @@ void SandboxScene::OnEnter()
     {
         robotCamera.SetParent(attachPoint);
     }
-    m_StreamingManager = std::make_shared<StreamingManager>();
     
 }  
 
 void SandboxScene::OnUpdate(float dt)
 {
-    if (m_StreamingManager && m_StreamingManager->IsConnected())
-    {
-        m_TimeSinceLastSend += dt;
+    // --- Video Streaming Logic ---
+    m_timeSinceLastSend += dt;
 
-        auto q = m_World.query<const VideoSender, const RenderTarget>();
+    // Find the entity with a VideoSender component
+    auto videoSenderQuery = m_World.query<VideoSender, const RenderTarget>();
+
+    videoSenderQuery.each([&](flecs::entity e, VideoSender& sender, const RenderTarget& target) {
         
-        // Assuming a single VideoSender entity.
-        q.each([this](const VideoSender& sender, const RenderTarget& target) {
-            if (m_TimeSinceLastSend >= 1.0f / sender.fpsLimit)
-            {
-                m_TimeSinceLastSend = 0.f;
+        float interval = 1.0f / sender.fpsLimit;
+        if (m_timeSinceLastSend < interval) {
+            return; // Not time to send yet
+        }
+        
+        m_timeSinceLastSend = 0.f; // Reset timer
 
-                auto texture = target.fbo->GetColorAttachment();
-                auto pixel_data = texture->GetAsyncData();
-                if (!pixel_data.empty())
-                {
-                    #ifdef __EMSCRIPTEN__
-                    int channels = 4; // GetAsyncData returns RGBA for WebGL
-                    #else
-                    int channels = (texture->GetFormat() == TextureFormat::RGBA8) ? 4 : 3;
-                    #endif
-                    m_StreamingManager->SendFrame(pixel_data, texture->GetWidth(), texture->GetHeight(), channels);
-                }
-            }
-        });
-    }
+        // Check for valid streaming manager and connection
+        if (!m_StreamingManager || !m_StreamingManager->IsConnected()) {
+            return;
+        }
+
+        // Get the framebuffer and its color attachment (the texture to be sent)
+        auto fbo = target.fbo;
+        if (!fbo || !fbo->GetColorAttachment()) {
+            return;
+        }
+
+        // Read pixel data from the GPU asynchronously.
+        // This function returns data from the *previous* frame, which is fine for streaming.
+        std::vector<uint8_t> pixels = fbo->GetColorAttachment()->GetAsyncData();
+        if (pixels.empty()) {
+            return; // PBO is not ready on the first frame, will be available next time.
+        }
+        
+        // Populate the frame data structure
+        FrameData frame;
+        frame.width = fbo->GetWidth();
+        frame.height = fbo->GetHeight();
+        
+        // We know the framebuffer was created with RGB8 format (3 channels)
+        // frame.channels = 4;
+        frame.channels = 4; 
+        frame.pixel_data = pixels;
+
+        // Send the frame over the network
+        m_StreamingManager->SendFrame(frame);
+    });
 }
 
 void SandboxScene::OnExit()
 {
-
+    if (m_StreamingManager)
+    {
+        m_StreamingManager->Shutdown();
+    }
 }
-
 void SandboxScene::OnImGuiRender()
 {
     // 1. 메인 컨테이너 (대시보드) 설정

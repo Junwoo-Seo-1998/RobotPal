@@ -1,9 +1,12 @@
 #include "RobotPal/Network/NetworkEngine.h"
+#include "RobotPal/Network/TransportFactory.h"
 
 
 NetworkEngine::NetworkEngine(flecs::world &world)
     : m_World(world), m_SendQueue(), m_RecvQueue(), isRunning(false), recvThread(), sendThread()
 {
+    m_Transport = TransportFactory::Create();
+
     m_World.set<NetworkEngineHandle>({this});
     m_World.set<NetworkConnectionState>({ConnectionStatus::Disconnected, "", 0.0f});
 }
@@ -15,12 +18,20 @@ NetworkEngine::~NetworkEngine()
 
 void NetworkEngine::Connect(const std::string &url)
 {
-    Start();
+    if(isRunning) return;
+
+    std::string ip = url; // 나중에 URL 파싱 필요
+    if (m_Transport && m_Transport->Connect(ip)) {
+        Start();
+    }
 }
 
 void NetworkEngine::Disconnect()
 {
     Stop();
+    if (m_Transport) {
+        m_Transport->Disconnect();
+    }
 }
 
 void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData)
@@ -44,6 +55,7 @@ void NetworkEngine::FlushSendQueue()
     {
         // 실제 소켓 전송은 여기서 몰아서 처리
         // Emscripten 웹소켓이나 TCP 소켓의 send 호출
+        m_Transport->Send(packetOpt->data);
     }
 }
 
