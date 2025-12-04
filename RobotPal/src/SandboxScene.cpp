@@ -16,11 +16,13 @@
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <memory>
+
 
 static std::unique_ptr<NetworkEngine> g_NetworkEngine;
 static std::unique_ptr<IRobotController> g_Controller;
 static Entity g_RobotEntity;
-#include <memory>
+
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
@@ -31,6 +33,8 @@ void SandboxScene::OnEnter()
     m_StreamingManager = IStreamingManager::Create(IStreamingManager::StreamingType::TCP);
 #endif
 
+    m_StreamingManager->Init();
+    m_StreamingManager->ConnectToServer("");
 
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});

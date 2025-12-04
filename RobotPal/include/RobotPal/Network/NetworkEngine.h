@@ -50,7 +50,7 @@ private:
     NetworkQueue m_RecvQueue;
     flecs::world& m_World;
 
-    // std::unique_ptr<INetworkTransport> m_Transport;
+    std::unique_ptr<INetworkTransport> m_Transport;
 
     bool isRunning;
     std::thread recvThread;
