@@ -40,16 +40,19 @@ void SandboxScene::OnEnter()
     mainCam.SetLocalPosition({0.1f, 0.5f, 1.1f});
     mainCam.SetLocalRotation(glm::radians(glm::vec3(-35.f, -0.15f, 0.f)));
 
-    camView=Framebuffer::Create(400, 400);
+    camView=Framebuffer::Create(1640, 1232);
     auto robotCamera=CreateEntity("robotCam");
-    robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
+    robotCamera.Set<Camera>({160.f, 0.001f, 1000.f, true})
                .Set<RenderTarget>({camView})
                .Set<VideoSender>({400, 400, 15.0f});
+
+    
     
     auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
     if(attachPoint)
     {
         robotCamera.SetParent(attachPoint);
+        robotCamera.SetLocalPosition({0.f,0.f,-0.001f});
     }
     
 }  

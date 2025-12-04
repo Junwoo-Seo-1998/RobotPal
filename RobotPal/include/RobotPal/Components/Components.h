@@ -65,6 +65,7 @@ struct Camera {
     float fov = 60.0f;
     float nearPlane = 0.1f;
     float farPlane = 1000.0f;
+    bool useFisheye=false;
 };
 
 // // 렌더링 순서 제어용 TODO
