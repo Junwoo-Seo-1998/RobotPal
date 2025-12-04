@@ -48,7 +48,7 @@ RobotPal was created to address these challenges. By moving the training and tes
 
 ### Pre-built Releases (Easiest Way)
 
-For the easiest access, you can download the latest pre-built version for your operating system from the **[Releases](https://github.com/Junwoo-Seo-1998/RobotPal/releases)** page. This allows you to run the application without building it from the source code.
+For the easiest access, you can download the latest pre-built version for your operating system from the **[Releases](https://github.com/junwo/RobotPal/releases)** page. This allows you to run the application without building it from the source code.
 
 ### Build from Source
 
@@ -156,7 +156,7 @@ RobotPal은 이러한 문제들을 해결하기 위해 만들어졌습니다. �
 
 ### 사전 빌드된 릴리스 (가장 쉬운 방법)
 
-가장 쉽게 사용하는 방법은 **[Releases](https://github.com/Junwoo-Seo-1998/RobotPal/releases)** 페이지에서 자신의 운영체제에 맞는 최신 버전을 다운로드하는 것입니다. 소스 코드를 직접 빌드하지 않고도 애플리케이션을 바로 실행할 수 있습니다.
+가장 쉽게 사용하는 방법은 **[Releases](https://github.com/junwo/RobotPal/releases)** 페이지에서 자신의 운영체제에 맞는 최신 버전을 다운로드하는 것입니다. 소스 코드를 직접 빌드하지 않고도 애플리케이션을 바로 실행할 수 있습니다.
 
 ### 소스 코드로 직접 빌드하기
 

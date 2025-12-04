@@ -8,6 +8,8 @@
 class VertexArray;
 class Shader;
 
+#include "RobotPal/StreamingManager.h"
+
 class SandboxScene : public Scene {
 public:
     using Scene::Scene;
@@ -21,6 +23,8 @@ public:
     void OnImGuiRender() override;
 private:
     Entity m_Center;
+    std::shared_ptr<StreamingManager> m_StreamingManager;
+    float m_TimeSinceLastSend = 0.f;
 };
 
 #endif
