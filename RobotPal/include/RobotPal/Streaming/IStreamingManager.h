@@ -6,6 +6,7 @@
 #include <memory>
 #include <cstdint>
 #include <iostream>
+
 struct FrameData {
     std::vector<uint8_t> pixel_data;
     int width = 0;
@@ -30,12 +31,9 @@ public:
     // -----------------------------
     // Static Factory
     // -----------------------------
-    enum class StreamingType {
-        WebSocket,
-        TCP
-    };
+    // 더 이상 타입을 인자로 받지 않습니다. (Factory가 알아서 결정)
+    static std::shared_ptr<IStreamingManager> Create();
 
-    static std::shared_ptr<IStreamingManager> Create(StreamingType type);
 protected:
     std::string m_StatusMessage = "Ready";
     bool m_IsConnected = false;
