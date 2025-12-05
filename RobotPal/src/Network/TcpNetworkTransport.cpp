@@ -86,9 +86,25 @@ void TcpNetworkTransport::Disconnect()
 
 void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
 {
-    
     if (!m_IsConnected || data.empty()) return;
 
+    // 1. 데이터 크기를 32비트 정수로 준비 (Python struct.pack '<L'과 호환)
+    uint32_t size = static_cast<uint32_t>(data.size());
+
+    // 2. 크기 정보(4바이트)를 먼저 전송
+#ifdef _WIN32
+    int sent_size = send(m_Socket, (const char*)&size, sizeof(uint32_t), 0);
+#else
+    ssize_t sent_size = ::send(m_Socket, (const char*)&size, sizeof(uint32_t), 0);
+#endif
+
+    if (sent_size <= 0) {
+        std::cerr << "[TCP] Send size failed, disconnecting...\n";
+        Disconnect();
+        return;
+    }
+
+    // 3. 실제 데이터 전송 (기존 로직과 동일)
     const char* ptr = (const char*)data.data();
     size_t left = data.size();
 
@@ -99,13 +115,12 @@ void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
         ssize_t sent = ::send(m_Socket, ptr, left, 0);
 #endif
         if (sent <= 0) {
-            std::cerr << "[TCP] Send failed, disconnecting...\n";
+            std::cerr << "[TCP] Send data failed, disconnecting...\n";
             Disconnect();
             return;
         }
         ptr += sent;
         left -= sent;   
     }
-   
 }
 #endif

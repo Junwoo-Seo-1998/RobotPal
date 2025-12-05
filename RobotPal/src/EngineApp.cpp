@@ -1,4 +1,5 @@
 #include "RobotPal/EngineApp.h"
+#include <iostream>
 #include "RobotPal/Window.h"
 #include "RobotPal/ImGuiManager.h"
 #include "RobotPal/Util/emscripten_mainloop.h"
@@ -21,6 +22,7 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Systems/RenderSystemModule.h"
 #include "RobotPal/Systems/TransformSystemModule.h"
+#include "RobotPal/Systems/StreamingSystemModule.h" // Add this
 #include "RobotPal/Core/Texture.h"
 
 #include <thread>
@@ -36,17 +38,25 @@ void EngineApp::Run()
 void EngineApp::Init()
 {
     m_Window=std::make_shared<Window>(1280, 720, "RobotPal");
-    m_Window->Init();
+    if (!m_Window->Init())
+    {
+        std::cerr << "Failed to create window. Make sure you are running in a graphical environment." << std::endl;
+        return;
+    }
     ImGuiManager::Get().Init(m_Window->GetNativeWindow());
 
-    m_SceneManager = std::make_shared<SceneManager>(m_World);
-    m_SceneManager->LoadScene<SandboxScene>();
-
-    m_World.set<WindowData>({ (float)1280, (float)720});
-
+    // 1. 모든 모듈을 먼저 임포트합니다.
     m_World.import<NetworkEngine>();
     m_World.import<RenderSystemModule>();
     m_World.import<TransformSystemModule>();
+    m_World.import<StreamingSystemModule>(); // <-- 누락된 모듈 추가
+
+    // 2. WindowData를 설정합니다.
+    m_World.set<WindowData>({ (float)1280, (float)720});
+
+    // 3. 모듈이 준비된 후 씬을 로드합니다.
+    m_SceneManager = std::make_shared<SceneManager>(m_World);
+    m_SceneManager->LoadScene<SandboxScene>();
     
 }
 

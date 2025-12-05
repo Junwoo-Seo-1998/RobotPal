@@ -3,6 +3,8 @@
 
 #include <flecs.h>
 
+class NetworkEngine;
+
 struct StreamingSystemModule
 {
 public:
