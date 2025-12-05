@@ -182,7 +182,7 @@ void RenderSystemModule::RegisterSystem()
             .build();
 
     world.system<const Camera, const TransformMatrix, const RenderTarget *>("RenderSystem")
-        .kind(flecs::OnStore)
+        .kind(flecs::PreStore)
         .term_at(1)
         .second<World>()
         .term_at(2)
