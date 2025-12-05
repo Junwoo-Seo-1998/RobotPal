@@ -61,8 +61,8 @@ private:
 };
 
 struct NetworkEngineHandle
-{
-    NetworkEngine& instance;   
+{    
+    NetworkEngine* instance=nullptr;   
 };
 
 #endif

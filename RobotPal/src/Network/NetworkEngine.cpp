@@ -11,7 +11,7 @@ NetworkEngine::NetworkEngine(flecs::world &world)
     m_Transport = TransportFactory::Create();
 
 
-    m_World.set<NetworkEngineHandle>({*this});
+    m_World.set<NetworkEngineHandle>(NetworkEngineHandle{this});
     m_World.set<NetworkConnectionState>({ConnectionStatus::Disconnected, "", 0.0f});
 }
 
@@ -50,7 +50,7 @@ void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData)
 {
     if (!isRunning) return;
     m_SendQueue.Push(rawData);
-    NetworkSleep(1);
+    //NetworkSleep(1);
 }
 
 std::optional<Packet> NetworkEngine::GetPacket()

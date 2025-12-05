@@ -27,7 +27,7 @@ void SandboxScene::OnEnter()
 {   
 
     auto networkEngine = m_World.get_mut<NetworkEngineHandle>();
-    networkEngine.instance.Connect("127.0.0.1:9998");
+    networkEngine.instance->Connect("127.0.0.1:9998");
     m_StreamingManager = IStreamingManager::Create(m_World);
     m_StreamingManager->Init();
     
