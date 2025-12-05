@@ -8,7 +8,6 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Network/NetworkEngine.h"
-#include "RobotPal/Streaming/IStreamingManager.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -26,10 +25,10 @@ std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {   
 
-    auto networkEngine = m_World.get_mut<NetworkEngineHandle>();
-    networkEngine.instance->Connect("127.0.0.1:9998");
-    m_StreamingManager = IStreamingManager::Create(m_World);
-    m_StreamingManager->Init();
+    // auto networkEngine = m_World.get_mut<NetworkEngineHandle>();
+    // networkEngine.instance->Connect("127.0.0.1:9998");
+    // m_StreamingManager = IStreamingManager::Create(m_World);
+    // m_StreamingManager->Init();
     
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
@@ -59,7 +58,7 @@ void SandboxScene::OnEnter()
     auto robotCamera=CreateEntity("robotCam");
     robotCamera.Set<Camera>({80.f, 0.001f, 1000.f})
                .Set<RenderTarget>({camView})
-               .Set<VideoSender>({400, 400, 15.0f});
+               .Set<VideoSender>({"127.0.0.1:9998"});
     
     auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
     if(attachPoint)
@@ -100,17 +99,17 @@ void SandboxScene::OnUpdate(float dt)
     g_Controller->Move(v, w);
     g_Controller->Update(dt);
 
-   if (m_StreamingManager)
-    {
-        auto data = camView->GetColorAttachment()->GetAsyncData();
-        if (!data.empty())
-        {
-            auto width = camView->GetWidth();
-            auto height = camView->GetHeight();
-            // The texture format is RGBA, so 3 channels.
-            m_StreamingManager->SendFrame({data, width, height, 3});
-        }
-    }
+//    if (m_StreamingManager)
+//     {
+//         auto data = camView->GetColorAttachment()->GetAsyncData();
+//         if (!data.empty())
+//         {
+//             auto width = camView->GetWidth();
+//             auto height = camView->GetHeight();
+//             // The texture format is RGBA, so 3 channels.
+//             m_StreamingManager->SendFrame({data, width, height, 3});
+//         }
+//     }
 
     // 모델 그리기
     // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");

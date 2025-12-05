@@ -22,6 +22,10 @@
 #include "RobotPal/Systems/RenderSystemModule.h"
 #include "RobotPal/Systems/TransformSystemModule.h"
 #include "RobotPal/Core/Texture.h"
+
+#include <thread>
+#include <chrono>
+
 void EngineApp::Run()
 {
     Init();

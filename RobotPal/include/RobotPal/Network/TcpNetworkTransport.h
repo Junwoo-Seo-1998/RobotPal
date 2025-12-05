@@ -1,5 +1,5 @@
 #pragma once
-#include "RobotPal/Network/INetworkTransport.h"
+#include "RobotPal/Network/NetworkTransport.h"
 
 #ifndef __EMSCRIPTEN__
 
@@ -17,7 +17,7 @@
     #define SOCKET_ERROR -1
 #endif
 
-class TcpNetworkTransport : public INetworkTransport
+class TcpNetworkTransport : public NetworkTransport
 {
 public:
     TcpNetworkTransport();

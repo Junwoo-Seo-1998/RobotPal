@@ -7,7 +7,7 @@
 #include <atomic>
 
 #include "RobotPal/Network/NetworkQueue.h"
-#include "RobotPal/Network/INetworkTransport.h"
+#include "RobotPal/Network/NetworkTransport.h"
 
 enum class ConnectionStatus {
     Disconnected,
@@ -29,7 +29,7 @@ public:
     ~NetworkEngine();
 
     // --- Connection ---
-    void Connect(const std::string& url);
+    bool TryConnect(const std::string& url);
     void Disconnect();
     bool IsConnected() const;
 
@@ -48,7 +48,7 @@ private:
 private:
     flecs::world& m_World;
 
-    std::unique_ptr<INetworkTransport> m_Transport;
+    std::shared_ptr<NetworkTransport> m_Transport;
 
     NetworkQueue m_SendQueue;
     NetworkQueue m_RecvQueue;

@@ -85,9 +85,11 @@ struct RenderTarget {
 //------------네트워크 관련---------------
 
 struct VideoSender {
-    int width, height;
-    float fpsLimit;
-    float timeSinceLastFrame;
+    std::string url;
+    // TODO:
+    // int width, height;
+    // float fpsLimit;
+    // float timeSinceLastFrame;
 };
 
 #endif

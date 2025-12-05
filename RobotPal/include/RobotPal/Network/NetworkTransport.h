@@ -2,11 +2,21 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <memory>
 
-class INetworkTransport
+struct ConnectionArg
+{
+    std::string ip;
+    int port;
+};
+
+
+class NetworkTransport
 {
 public:
-    virtual ~INetworkTransport() = default;
+    static std::shared_ptr<NetworkTransport> Create();
+    
+    virtual ~NetworkTransport() = default;
 
     virtual bool Connect(const std::string& url) = 0;
     virtual void Disconnect() = 0;
@@ -19,4 +29,6 @@ public:
     // virtual int Receive(uint8_t* buffer, size_t maxSize) = 0;
 
     virtual bool IsConnected() const = 0;
+    //protected:
+    //Network
 };

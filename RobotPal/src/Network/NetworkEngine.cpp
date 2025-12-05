@@ -1,14 +1,13 @@
 #include "RobotPal/Network/NetworkEngine.h"
-#include "RobotPal/Network/TransportFactory.h"
-
 #ifndef _WIN32
 #include <unistd.h>
+#include <iostream>
 #endif
 
 NetworkEngine::NetworkEngine(flecs::world &world)
     : m_World(world), m_SendQueue(), m_RecvQueue(), isRunning(false), recvThread(), sendThread()
 {
-    m_Transport = TransportFactory::Create();
+    m_Transport=NetworkTransport::Create();
 
 
     m_World.set<NetworkEngineHandle>(NetworkEngineHandle{this});
@@ -20,13 +19,14 @@ NetworkEngine::~NetworkEngine()
     Disconnect();
 }
 
-void NetworkEngine::Connect(const std::string &url) 
+bool NetworkEngine::TryConnect(const std::string &url) 
 {
-    if(isRunning) return;
+    if(isRunning) return true;
 
-    if (m_Transport && m_Transport->Connect(url)) {
-        Start(); // 제어 스레드 시작
-    }
+    bool result=m_Transport && m_Transport->Connect(url);
+    if(result) Start();
+
+    return result;
 }
 void NetworkEngine::Disconnect() 
 {
@@ -37,20 +37,10 @@ bool NetworkEngine::IsConnected() const {
     return m_Transport && m_Transport->IsConnected();
 }
 
-void NetworkSleep(int milliseconds)
-{
-#ifdef _WIN32
-    ::Sleep(milliseconds);
-#else
-    usleep(milliseconds * 1000);
-#endif
-}
-
 void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData) 
 {
     if (!isRunning) return;
     m_SendQueue.Push(rawData);
-    //NetworkSleep(1);
 }
 
 std::optional<Packet> NetworkEngine::GetPacket()
@@ -96,7 +86,11 @@ void NetworkEngine::SendLoop()
 {
     while (isRunning)
     {
-        FlushSendQueue();
+        //FlushSendQueue();
+        if(auto packetOpt = m_SendQueue.TryPop())
+        {
+            m_Transport->Send(packetOpt->data);
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }

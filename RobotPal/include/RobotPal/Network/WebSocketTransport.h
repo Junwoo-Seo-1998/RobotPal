@@ -1,10 +1,10 @@
 #pragma once
-#include "RobotPal/Network/INetworkTransport.h"
+#include "RobotPal/Network/NetworkTransport.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/websocket.h>
 
-class WebSocketTransport : public INetworkTransport
+class WebSocketTransport : public NetworkTransport
 {
 public:
     WebSocketTransport();
