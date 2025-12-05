@@ -1,13 +1,17 @@
 #include "RobotPal/Network/NetworkEngine.h"
 #include "RobotPal/Network/TransportFactory.h"
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 NetworkEngine::NetworkEngine(flecs::world &world)
     : m_World(world), m_SendQueue(), m_RecvQueue(), isRunning(false), recvThread(), sendThread()
 {
     m_Transport = TransportFactory::Create();
 
 
-    m_World.set<NetworkEngineHandle>({this});
+    m_World.set<NetworkEngineHandle>({*this});
     m_World.set<NetworkConnectionState>({ConnectionStatus::Disconnected, "", 0.0f});
 }
 
@@ -32,11 +36,21 @@ void NetworkEngine::Disconnect()
 bool NetworkEngine::IsConnected() const {
     return m_Transport && m_Transport->IsConnected();
 }
+
+void NetworkSleep(int milliseconds)
+{
+#ifdef _WIN32
+    ::Sleep(milliseconds);
+#else
+    usleep(milliseconds * 1000);
+#endif
+}
+
 void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData) 
 {
     if (!isRunning) return;
     m_SendQueue.Push(rawData);
-    Sleep(1);
+    NetworkSleep(1);
 }
 
 std::optional<Packet> NetworkEngine::GetPacket()

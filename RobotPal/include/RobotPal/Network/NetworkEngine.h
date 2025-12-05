@@ -62,7 +62,7 @@ private:
 
 struct NetworkEngineHandle
 {
-    NetworkEngine* instance;   // const 금지
+    NetworkEngine& instance;   
 };
 
 #endif

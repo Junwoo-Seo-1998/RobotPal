@@ -3,7 +3,7 @@ import struct
 import cv2
 import numpy as np
 
-# [설정] Native 클라이언트용 TCP 포트
+
 HOST = '0.0.0.0'
 PORT = 9998  
 
