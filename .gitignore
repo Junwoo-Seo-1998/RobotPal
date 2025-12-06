@@ -46,4 +46,9 @@ build*
 .vs
 .vscode
 
+Middle-Server/
+build-web/
+
+Middle-Server
+build-web
 venv

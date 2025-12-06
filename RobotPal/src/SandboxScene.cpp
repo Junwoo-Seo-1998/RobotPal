@@ -54,7 +54,9 @@ void SandboxScene::OnEnter()
     mainCam.SetLocalPosition({0.1f, 0.5f, 1.1f});
     mainCam.SetLocalRotation(glm::radians(glm::vec3(-35.f, -0.15f, 0.f)));
 
-    camView=Framebuffer::Create(1640, 1232);
+    // camView=Framebuffer::Create(1640, 1232);
+    camView=Framebuffer::Create(400, 400);
+
     auto robotCamera=CreateEntity("robotCam");
     robotCamera.Set<Camera>({160.f, 0.001f, 1000.f, true})
                .Set<RenderTarget>({camView})

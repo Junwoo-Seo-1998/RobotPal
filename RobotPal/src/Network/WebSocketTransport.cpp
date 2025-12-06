@@ -1,10 +1,9 @@
 #include "RobotPal/Network/WebSocketTransport.h"
-#include <iostream>
+
 
 #ifdef __EMSCRIPTEN__
-
+#include <iostream>
 WebSocketTransport::WebSocketTransport() = default;
-
 WebSocketTransport::~WebSocketTransport()
 {
     Disconnect();

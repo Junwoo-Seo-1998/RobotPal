@@ -21,6 +21,7 @@
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Systems/RenderSystemModule.h"
 #include "RobotPal/Systems/TransformSystemModule.h"
+#include "RobotPal/Systems/StreamingSystemModule.h"
 #include "RobotPal/Core/Texture.h"
 
 #include <thread>
@@ -47,6 +48,7 @@ void EngineApp::Init()
     m_World.import<NetworkEngine>();
     m_World.import<RenderSystemModule>();
     m_World.import<TransformSystemModule>();
+    m_World.import<StreamingSystemModule>();
     
 }
 

@@ -3,6 +3,8 @@
 #include "RobotPal/Network/NetworkEngine.h"
 #include "stb_image_write.h"
 #include <iostream>
+
+
 StreamingSystemModule::StreamingSystemModule(flecs::world& world)
 {
     bool networkEngineFound=false;
@@ -49,8 +51,9 @@ void StreamingSystemModule::RegisterSystem(flecs::world& world)
     world.system<const Camera, const RenderTarget, const VideoSender>()
     .kind(flecs::OnStore)
     .each([&](flecs::entity entity, const Camera &/*cam*/, const RenderTarget &renderTarget, const VideoSender& videoCmp)
-    {
-        auto data=renderTarget.fbo->GetColorAttachment()->GetAsyncData();
+    {   
+        uint64_t currentFrame = world.get_info()->frame_count_total;
+        auto data=renderTarget.fbo->GetColorAttachment()->GetAsyncData(currentFrame);
         if (!data.empty())
         {
             auto width = renderTarget.fbo->GetWidth();
@@ -74,12 +77,12 @@ void StreamingSystemModule::RegisterSystem(flecs::world& world)
                 std::vector<uint8_t> packet;
 
 //                OPENCV RGB BGR 맞아 그거떄문임// 이거 그럼 그냥 서버에서 해도됨? ㅇㅋ?
-                // uint32_t size_be = htonl(static_cast<uint32_t>(ctx.buffer.size()));
-                // const uint8_t* size_ptr = reinterpret_cast<const uint8_t*>(&size_be);
+                uint32_t size_be = static_cast<uint32_t>(ctx.buffer.size());
+                const uint8_t* size_ptr = reinterpret_cast<const uint8_t*>(&size_be);
 
-                // packet.insert(packet.end(), size_ptr, size_ptr + 4);
-                // packet.insert(packet.end(), ctx.buffer.begin(), ctx.buffer.end());
-                //netEngine->SendPacket();
+                packet.insert(packet.end(), size_ptr, size_ptr + 4);
+                packet.insert(packet.end(), ctx.buffer.begin(), ctx.buffer.end());
+                netEngine->SendPacket(packet);
             }
         }
     });

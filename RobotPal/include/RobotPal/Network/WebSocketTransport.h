@@ -2,6 +2,7 @@
 #include "RobotPal/Network/NetworkTransport.h"
 
 #ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
 #include <emscripten/websocket.h>
 
 class WebSocketTransport : public NetworkTransport
