@@ -1,10 +1,16 @@
 #include "RobotPal/Network/NetworkEngine.h"
-
+#ifndef _WIN32
+#include <unistd.h>
+#include <iostream>
+#endif
 
 NetworkEngine::NetworkEngine(flecs::world &world)
     : m_World(world), m_SendQueue(), m_RecvQueue(), isRunning(false), recvThread(), sendThread()
 {
-    m_World.set<NetworkEngineHandle>({this});
+    m_Transport=NetworkTransport::Create();
+
+
+    m_World.set<NetworkEngineHandle>(NetworkEngineHandle{this});
     m_World.set<NetworkConnectionState>({ConnectionStatus::Disconnected, "", 0.0f});
 }
 
@@ -13,24 +19,28 @@ NetworkEngine::~NetworkEngine()
     Disconnect();
 }
 
-void NetworkEngine::Connect(const std::string &url)
+bool NetworkEngine::TryConnect(const std::string &url) 
 {
-    Start();
-}
+    if(isRunning) return true;
 
-void NetworkEngine::Disconnect()
+    bool result=m_Transport && m_Transport->Connect(url);
+    if(result) Start();
+
+    return result;
+}
+void NetworkEngine::Disconnect() 
 {
     Stop();
+    if (m_Transport) m_Transport->Disconnect();
+}
+bool NetworkEngine::IsConnected() const {
+    return m_Transport && m_Transport->IsConnected();
 }
 
-void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData)
+void NetworkEngine::SendPacket(const std::vector<uint8_t> &rawData) 
 {
-    if (!isRunning)
-        return;
-    std::vector<uint8_t> packet = rawData;
-    // 아직은 패킷 포장이없는데 나중에 추가해야할수도 있음
-
-    m_SendQueue.Push(packet);
+    if (!isRunning) return;
+    m_SendQueue.Push(rawData);
 }
 
 std::optional<Packet> NetworkEngine::GetPacket()
@@ -42,41 +52,33 @@ void NetworkEngine::FlushSendQueue()
 {
     while (auto packetOpt = m_SendQueue.TryPop())
     {
-        // 실제 소켓 전송은 여기서 몰아서 처리
-        // Emscripten 웹소켓이나 TCP 소켓의 send 호출
+        if(m_Transport)
+            m_Transport->Send(packetOpt->data);
     }
 }
 
 void NetworkEngine::Start()
 {
     isRunning = true;
-
-    // 1. 수신 스레드 시작
     recvThread = std::thread(&NetworkEngine::RecvLoop, this);
-
-    // 2. 송신 스레드 시작
     sendThread = std::thread(&NetworkEngine::SendLoop, this);
 }
 
 void NetworkEngine::Stop()
 {
     isRunning = false;
-    if (recvThread.joinable())
-        recvThread.join();
-    if (sendThread.joinable())
-        sendThread.join();
+    if (recvThread.joinable()) recvThread.join();
+    if (sendThread.joinable()) sendThread.join();
 }
 
 void NetworkEngine::RecvLoop()
 {
+    // 현재는 Control Transport 수신만 담당한다고 가정
+    // 필요시 Streaming 수신도 구현 가능하나, 영상 송신 위주이므로 생략
     while (isRunning)
     {
-        // int len = recv(socket, buffer, ...);
-
-        // if (len > 0)
-        // {
-        //    // m_RecvQueue.Push();
-        // }
+        // ... (기존 수신 로직 보완 필요 시 여기에 작성)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -84,6 +86,11 @@ void NetworkEngine::SendLoop()
 {
     while (isRunning)
     {
-        FlushSendQueue();
+        //FlushSendQueue();
+        if(auto packetOpt = m_SendQueue.TryPop())
+        {
+            m_Transport->Send(packetOpt->data);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }

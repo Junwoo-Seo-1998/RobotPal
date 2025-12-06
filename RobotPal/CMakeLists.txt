@@ -46,7 +46,6 @@ if(EMSCRIPTEN)
         
         # 찾은 경로를 환경 변수 EMSCRIPTEN으로 강제 설정
         set(ENV{EMSCRIPTEN} "${EMSCRIPTEN_ROOT_PATH}")
-        
         message(STATUS "Auto-detected EMSCRIPTEN root: ${EMSCRIPTEN_ROOT_PATH}")
     endif()
 endif()
@@ -151,7 +150,7 @@ if(EMSCRIPTEN)
             "${CMAKE_SOURCE_DIR}/RobotPal-web/template.html"
             "${CMAKE_CURRENT_BINARY_DIR}/index.html"
     )
-
+    target_link_options(RobotPal PRIVATE "-lwebsocket.js")
     # Emscripten의 경우 플랫폼별 GL 라이브러리 없이 링크합니다.
     target_link_libraries(imgui PRIVATE glfw)
     target_link_libraries(RobotPal PRIVATE glfw imgui)
@@ -164,7 +163,7 @@ if(EMSCRIPTEN)
     add_link_options("-pthread")
     add_link_options("-sPROXY_TO_PTHREAD")
     add_link_options("-sPTHREAD_POOL_SIZE=3") # 스레드 풀 사이즈 (적절히 조절)
-
+    add_link_options("-lwebscocket.js")
     # Emscripten 관련 속성 및 링크 플래그를 설정합니다.
     set_target_properties(RobotPal PROPERTIES SUFFIX ".html")
     target_link_options(RobotPal PRIVATE
@@ -176,7 +175,6 @@ if(EMSCRIPTEN)
     target_link_options(RobotPal PRIVATE
         "SHELL:--preload-file ${ASSET_DIR}@/Assets"
     )
-
     target_link_options(RobotPal PRIVATE
         "SHELL:-sSTACK_SIZE=8388608"
     )

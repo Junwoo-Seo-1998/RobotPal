@@ -20,7 +20,6 @@ public:
 
     void OnImGuiRender() override;
 private:
-    Entity m_Center;
 };
 
 #endif

@@ -1,21 +1,35 @@
 #include "RobotPal/SandboxScene.h"
 #include "RobotPal/Buffer.h"
+#include "RobotPal/SimController.h" 
+#include "RobotPal/RobotController.h"
+#include "RobotPal/RealController.h"
+#include "RobotPal/HybridController.h"
 #include "RobotPal/GlobalComponents.h"
 #include "RobotPal/Core/AssetManager.h"
 #include "RobotPal/Components/Components.h"
 #include "RobotPal/Network/NetworkEngine.h"
-
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/quaternion.hpp> // [중요] 쿼터니언 -> 행렬 변환용
+#include <glm/gtc/quaternion.hpp>
 #include <imgui.h>
 #include <glad/gles2.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <memory>
+
+
+static std::unique_ptr<IRobotController> g_Controller;
+static Entity g_RobotEntity;
+
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
-{
+{   
+
+    // auto networkEngine = m_World.get_mut<NetworkEngineHandle>();
+    // networkEngine.instance->Connect("127.0.0.1:9998");
+    // m_StreamingManager = IStreamingManager::Create(m_World);
+    // m_StreamingManager->Init();
+    
     auto hdrID = AssetManager::Get().LoadTextureHDR("./Assets/airport.hdr");
     m_World.set<Skybox>({hdrID, 1.0f, 0.0f});
 
@@ -40,25 +54,70 @@ void SandboxScene::OnEnter()
     mainCam.SetLocalPosition({0.1f, 0.5f, 1.1f});
     mainCam.SetLocalRotation(glm::radians(glm::vec3(-35.f, -0.15f, 0.f)));
 
-    camView=Framebuffer::Create(1640, 1232);
+    // camView=Framebuffer::Create(1640, 1232);
+    camView=Framebuffer::Create(400, 400);
+
     auto robotCamera=CreateEntity("robotCam");
     robotCamera.Set<Camera>({160.f, 0.001f, 1000.f, true})
                .Set<RenderTarget>({camView})
-               .Set<VideoSender>({400, 400, 15.0f});
-
-    
+               .Set<VideoSender>({"127.0.0.1:9998"});
     
     auto attachPoint=prefabEntity.FindChildByNameRecursive(prefabEntity, "Cam");
     if(attachPoint)
     {
         robotCamera.SetParent(attachPoint);
-        robotCamera.SetLocalPosition({0.f,0.f,-0.001f});
     }
-    
+
+    g_Controller = std::make_unique<HybridController>(prefabEntity);
+
+    if (g_Controller->Init()) {
+        std::cout << ">>> Hybrid Controller (Shared Entity) Initialized!" << std::endl;
+    }
+
 }  
 
 void SandboxScene::OnUpdate(float dt)
 {
+    if (!g_Controller) return;
+
+    // -------------------------------------------------------
+    // [1] 입력 처리 (Input)
+    // -------------------------------------------------------
+    float v = 0.0f;
+    float w = 0.0f;
+    GLFWwindow* window = glfwGetCurrentContext();
+    float speed = 1.0f; 
+    float turn_speed = 2.5f;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) v = speed;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) v = -speed;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) w = turn_speed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) w = -turn_speed;
+
+    // -------------------------------------------------------
+    // [2] 드라이버 업데이트 (Logic)
+    // -------------------------------------------------------
+    // 드라이버가 Entity의 Position, Rotation을 수정함
+
+    g_Controller->Move(v, w);
+    g_Controller->Update(dt);
+
+//    if (m_StreamingManager)
+//     {
+//         auto data = camView->GetColorAttachment()->GetAsyncData();
+//         if (!data.empty())
+//         {
+//             auto width = camView->GetWidth();
+//             auto height = camView->GetHeight();
+//             // The texture format is RGBA, so 3 channels.
+//             m_StreamingManager->SendFrame({data, width, height, 3});
+//         }
+//     }
+
+    // 모델 그리기
+    // auto modelRes = AssetManager::Get().GetModel("./Assets/jetank.glb");
+    // if (modelRes) {
+    //     RenderNode(modelRes->nodes[modelRes->rootNodeIndex], rootTransform, *modelRes);
+    // }
     //auto data=camView->GetColorAttachment()->GetAsyncData();
 
     //일단 이형태로 가져와서 씀
@@ -68,9 +127,7 @@ void SandboxScene::OnUpdate(float dt)
 
 void SandboxScene::OnExit()
 {
-
 }
-
 void SandboxScene::OnImGuiRender()
 {
     // ImGui::Begin("baked IBL");
