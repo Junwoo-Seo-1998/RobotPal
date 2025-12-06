@@ -1,8 +1,9 @@
-// Texture.h
 #ifndef __TEXTURE_H__
 #define __TEXTURE_H__
-#include <glad/gles2.h>
+
+#include <glad/gles2.h> // 또는 사용하는 OpenGL 로더
 #include <vector>
+#include <cstdint>      // uint64_t
 #include <memory>
 #include <string>
 
@@ -40,12 +41,14 @@ public:
     // [CPU -> GPU] 데이터 업로드 (일반 2D)
     void SetData(const void* data, int size);
 
-    // [CPU -> GPU] 큐브맵 데이터 업로드 (순서: Right, Left, Top, Bottom, Front, Back)
+    // [CPU -> GPU] 큐브맵 데이터 업로드
     void SetCubeMapData(const std::vector<void*>& faces);
 
-    // [GPU -> CPU] 비동기 데이터 읽기 (PBO 사용, Non-blocking)
-    // 네트워크 전송 시 이 함수를 사용하세요. (1프레임 지연 있음)
-    std::vector<uint8_t> GetAsyncData();
+    // ---------------------------------------------------------
+    // [GPU -> CPU] 비동기 데이터 읽기 (PBO 사용)
+    // currentFrameIndex: 현재 프레임 번호 (중복 호출 방지용)
+    // ---------------------------------------------------------
+    std::vector<uint8_t> GetAsyncData(uint64_t currentFrameIndex);
 
     // Getters
     unsigned int GetID() const { return m_RendererID; }
@@ -59,7 +62,7 @@ public:
 
 private:
     void CreateInternal();
-    void InitPBOs(); // PBO 지연 초기화
+    void InitPBOs(); // PBO 초기화 함수
 
     unsigned int m_RendererID = 0;
     int m_Width, m_Height;
@@ -67,13 +70,15 @@ private:
     TextureType m_Type;
 
     // --- PBO(Pixel Buffer Object) 관련 ---
-    // 비동기 전송을 위해 인스턴스별로 소유 (공유 불가)
     unsigned int m_PBOs[2] = {0, 0}; 
     int m_PBOIndex = 0;              
     bool m_UsePBO = false;           
 
+    // --- 프레임 캐싱 (중복 호출 및 Stall 방지) ---
+    std::vector<uint8_t> m_CachedData;
+    uint64_t m_LastUpdateFrame = 0;
+
     // --- Readback FBO 관련 ---
-    // 읽기 작업을 위한 임시 FBO는 전역 공유 (메모리 절약)
     static unsigned int s_ReadFBO; 
 };
 
