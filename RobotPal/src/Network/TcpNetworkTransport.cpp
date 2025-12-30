@@ -110,6 +110,7 @@ void TcpNetworkTransport::Disconnect()
 
 void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
 {
+    std::lock_guard<std::mutex> lock(m_enqueueMutex);
     // [핵심] 큐에만 넣고 즉시 리턴 (Main Thread Blocking 방지)
     if (m_IsConnected) {
         const auto dropped = m_SendQueue.Dropped();
@@ -209,6 +210,7 @@ void TcpNetworkTransport::SendWorker()
 
 void TcpNetworkTransport::StopWorkers()
 {
+    std::lock_guard<std::mutex> lock(m_enqueueMutex);
     m_IsRunning = false;
     m_IsConnected = false;
     if (m_Socket != INVALID_SOCKET) {

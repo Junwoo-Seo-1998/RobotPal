@@ -60,6 +60,7 @@ private:
     std::thread m_RecvThread;
     std::thread m_SendThread;
 
+    std::mutex m_enqueueMutex;
     robotpal::BoundedSendQueue m_SendQueue;
 };
 

@@ -71,6 +71,22 @@ int main() {
         assert(!transport.IsConnected()); // A fully stalled send fails instead of hanging.
         transport.Disconnect(); close(peer);
     }
+    {
+        Listener listener; assert(transport.Connect(listener.Url()));
+        int peer = accept(listener.fd, nullptr, nullptr);
+        std::atomic<bool> producing{true};
+        std::vector<std::thread> producers;
+        for (int i=0; i<4; ++i) producers.emplace_back([&] {
+            const std::vector<uint8_t> frame(64*1024, 0x55);
+            while (producing) transport.Send(frame);
+        });
+        std::this_thread::sleep_for(20ms);
+        transport.Disconnect();
+        producing = false;
+        for (auto& producer : producers) producer.join();
+        assert(transport.PendingPackets() == 0 && transport.PendingBytes() == 0);
+        close(peer);
+    }
     // Remote close must stop workers; destruction/reconnect must join them safely.
     {
         Listener listener; assert(transport.Connect(listener.Url()));
