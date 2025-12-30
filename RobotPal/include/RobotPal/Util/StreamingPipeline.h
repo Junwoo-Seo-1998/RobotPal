@@ -1,4 +1,5 @@
 #pragma once
+#include "RobotPal/Network/StreamingSendPolicy.h"
 #include <vector>
 #include <cstdint>
 #include <cstddef>
@@ -51,4 +52,6 @@ private:
     std::condition_variable m_encodeQueueCv;
 
     std::vector<std::thread> m_encodeThreads;
+    std::mutex m_publishMutex;
+    robotpal::FreshFrameGate m_frameGate;
 };

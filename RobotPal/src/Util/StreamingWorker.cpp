@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 // ---------------------------------------------
@@ -121,7 +122,7 @@ void StreamingPipeline::PushFrame(
 // ---------------------------------------------
 void StreamingPipeline::EncodeWorkerLoop() {
     // JpegEncoder 생성
-    JpegEncoder* jpeg = CreateJpegEncoder();
+    std::unique_ptr<JpegEncoder> jpeg(CreateJpegEncoder());
 
     // [Optimized] 루프 외부에서 버퍼 할당 (메모리 재사용)
     std::vector<uint8_t> rgbBuffer;
@@ -230,6 +231,12 @@ void StreamingPipeline::EncodeWorkerLoop() {
         // 데이터 (insert 최적화 활용)
         packet.insert(packet.end(), jpegOut.begin(), jpegOut.end());
 
+        // Serialize freshness check and enqueue: workers can finish out of order.
+        std::lock_guard<std::mutex> publishLock(m_publishMutex);
+        if (!m_frameGate.Accept(job.frameId)) {
+            robotpal::benchmark::Event("encode_stale_dropped", job.frameId, 0, 0, "newer_frame_already_published");
+            continue;
+        }
         if(m_networkEngine) {
             // NetworkEngine::SendPacket은 const std::vector&를 받으므로 
             // 복사가 발생하지만, 여기서 packet 인스턴스 자체는 유지되어 

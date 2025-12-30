@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <cstring>
+#include <cerrno>
 #include "RobotPal/Util/Benchmark.h"
 #ifndef __EMSCRIPTEN__
 namespace {
@@ -33,6 +34,8 @@ bool TcpNetworkTransport::Connect(const std::string& url)
 {
     if (m_IsConnected) return true;
 
+    Disconnect(); // Join workers from a previous remote close before reconnecting.
+
     // URL 파싱 (예: "127.0.0.1:9998")
     std::string ip = url;
     int port = 9998; // 기본 포트
@@ -61,6 +64,27 @@ bool TcpNetworkTransport::Connect(const std::string& url)
         return false;
     }
 
+#ifdef SO_NOSIGPIPE
+    int noSigpipe = 1;
+    if (setsockopt(m_Socket, SOL_SOCKET, SO_NOSIGPIPE,
+                   reinterpret_cast<const char*>(&noSigpipe), sizeof(noSigpipe)) == SOCKET_ERROR) {
+        CleanupSocket();
+        return false;
+    }
+#endif
+    // Bound a stalled socket write. On timeout the whole connection is failed;
+    // dropping a suffix would corrupt the receiver's length-prefixed stream.
+#ifdef _WIN32
+    DWORD timeout = 1000;
+#else
+    timeval timeout{1, 0};
+#endif
+    if (setsockopt(m_Socket, SOL_SOCKET, SO_SNDTIMEO,
+                   reinterpret_cast<const char*>(&timeout), sizeof(timeout)) == SOCKET_ERROR) {
+        CleanupSocket();
+        return false;
+    }
+
     std::cout << "[TCP] Connected to " << url << "\n";
     m_IsConnected = true;
     m_IsRunning = true;
@@ -73,16 +97,11 @@ bool TcpNetworkTransport::Connect(const std::string& url)
 
 void TcpNetworkTransport::Disconnect()
 {
-    if (!m_IsRunning) return;
-
-    m_IsRunning = false;
-    m_IsConnected = false;
-
-    // 소켓을 닫으면 recv()가 에러를 리턴하며 RecvWorker가 종료됨
-    CleanupSocket();
-
+    StopWorkers();
     if (m_RecvThread.joinable()) m_RecvThread.join();
     if (m_SendThread.joinable()) m_SendThread.join();
+    // Keep the descriptor stable until both workers have stopped accessing it.
+    CleanupSocket();
 
     // 큐 비우기
     m_SendQueue.Clear();
@@ -93,8 +112,12 @@ void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
 {
     // [핵심] 큐에만 넣고 즉시 리턴 (Main Thread Blocking 방지)
     if (m_IsConnected) {
-        m_SendQueue.Push(data);
-        robotpal::benchmark::Event("transport_queued", BenchmarkFrameId(data), 0, m_SendQueue.Size());
+        const auto dropped = m_SendQueue.Dropped();
+        const bool accepted = m_SendQueue.Push(data);
+        if (!accepted || m_SendQueue.Dropped() != dropped)
+            robotpal::benchmark::Event("transport_dropped", BenchmarkFrameId(data), 0,
+                                      m_SendQueue.Dropped(), "bounded_drop_oldest_or_oversize");
+        if (accepted) robotpal::benchmark::Event("transport_queued", BenchmarkFrameId(data), 0, m_SendQueue.Size());
     }
 }
 
@@ -135,6 +158,7 @@ void TcpNetworkTransport::RecvWorker()
             break;
         }
     }
+    StopWorkers();
 }
 
 void TcpNetworkTransport::SendWorker()
@@ -146,22 +170,33 @@ void TcpNetworkTransport::SendWorker()
 
         if (packetOpt.has_value())
         {
-            const auto& data = packetOpt->data;
+            const auto& data = *packetOpt;
             const auto frameId = BenchmarkFrameId(data);
             const auto sendStart = robotpal::benchmark::SteadyNowNs();
-            int sent = send(m_Socket, (const char*)data.data(), (int)data.size(), 0);
+            const bool completed = robotpal::SendComplete(data,
+                [this](const uint8_t* bytes, size_t count) {
+#ifdef _WIN32
+                    const int sent = send(m_Socket, reinterpret_cast<const char*>(bytes), static_cast<int>(count), 0);
+                    if (sent == SOCKET_ERROR && WSAGetLastError() == WSAEINTR) return -2;
+#else
+                    const int sent = static_cast<int>(send(m_Socket, bytes, count,
+#ifdef MSG_NOSIGNAL
+                        MSG_NOSIGNAL
+#else
+                        0
+#endif
+                    ));
+                    if (sent == SOCKET_ERROR && errno == EINTR) return -2;
+#endif
+                    return sent;
+                }, [this] { return m_IsRunning.load(); });
             const auto sendNs = robotpal::benchmark::SteadyNowNs() - sendStart;
-
-            if (sent == SOCKET_ERROR) {
-                robotpal::benchmark::Event("send_failed", frameId, sendNs, 0, "socket_error");
-                std::cerr << "[TCP] Send Error\n";
-                m_IsConnected = false;
+            if (!completed) {
+                robotpal::benchmark::Event("send_failed", frameId, sendNs, 0, "closed_error_or_timeout");
+                StopWorkers();
                 break;
-            } else if (sent != static_cast<int>(data.size())) {
-                robotpal::benchmark::Event("send_failed", frameId, sendNs, sent, "partial_send");
-            } else {
-                robotpal::benchmark::Event("send_completed", frameId, sendNs, sent);
             }
+            robotpal::benchmark::Event("send_completed", frameId, sendNs, data.size());
         }
         else
         {
@@ -169,6 +204,19 @@ void TcpNetworkTransport::SendWorker()
             // (NetworkQueue에 Condition Variable이 있다면 대기하는 게 더 좋음)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+    }
+}
+
+void TcpNetworkTransport::StopWorkers()
+{
+    m_IsRunning = false;
+    m_IsConnected = false;
+    if (m_Socket != INVALID_SOCKET) {
+#ifdef _WIN32
+        shutdown(m_Socket, SD_BOTH);
+#else
+        shutdown(m_Socket, SHUT_RDWR);
+#endif
     }
 }
 
