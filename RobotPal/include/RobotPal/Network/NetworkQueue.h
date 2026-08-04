@@ -21,6 +21,7 @@ public:
 
     // [소비자] 큐가 비었는지 확인
     bool Empty();
+    size_t Size();
 
     // [관리] 큐 비우기 (씬 전환 시 등)
     void Clear();

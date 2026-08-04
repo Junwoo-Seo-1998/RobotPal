@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 #include <queue>
 #include <thread>
 #include <mutex>
@@ -11,6 +12,8 @@
 
 class StreamingPipeline {
 public:
+    static constexpr size_t EncodeQueueCapacity = 6;
+
     StreamingPipeline(flecs::world& world);
     ~StreamingPipeline();
 
@@ -19,7 +22,9 @@ public:
         int width,
         int height,
         int components,
-        uint32_t frameId
+        uint32_t frameId,
+        uint64_t generatedUnixNs,
+        uint64_t queueStartNs
     );
 
     void TryConnect(const std::string& url);
@@ -31,6 +36,8 @@ private:
         int height;
         int components;
         uint32_t frameId;
+        uint64_t generatedUnixNs;
+        uint64_t queueStartNs;
     };
 
     void EncodeWorkerLoop();

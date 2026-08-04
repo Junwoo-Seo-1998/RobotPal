@@ -1,7 +1,18 @@
 #include "RobotPal/Network/TcpNetworkTransport.h"
 #include <iostream>
 #include <chrono>
+#include <cstring>
+#include "RobotPal/Util/Benchmark.h"
 #ifndef __EMSCRIPTEN__
+namespace {
+uint32_t BenchmarkFrameId(const std::vector<uint8_t>& packet) {
+    static const uint8_t magic[8] = {'R','P','B','E','N','C','H','1'};
+    if (packet.size() < 24 || std::memcmp(packet.data() + 4, magic, 8) != 0) return 0;
+    uint32_t id = 0;
+    for (int i = 0; i < 4; ++i) id |= static_cast<uint32_t>(packet[12 + i]) << (i * 8);
+    return id;
+}
+}
 TcpNetworkTransport::TcpNetworkTransport()
 {
 #ifdef _WIN32
@@ -83,6 +94,7 @@ void TcpNetworkTransport::Send(const std::vector<uint8_t>& data)
     // [핵심] 큐에만 넣고 즉시 리턴 (Main Thread Blocking 방지)
     if (m_IsConnected) {
         m_SendQueue.Push(data);
+        robotpal::benchmark::Event("transport_queued", BenchmarkFrameId(data), 0, m_SendQueue.Size());
     }
 }
 
@@ -135,12 +147,20 @@ void TcpNetworkTransport::SendWorker()
         if (packetOpt.has_value())
         {
             const auto& data = packetOpt->data;
+            const auto frameId = BenchmarkFrameId(data);
+            const auto sendStart = robotpal::benchmark::SteadyNowNs();
             int sent = send(m_Socket, (const char*)data.data(), (int)data.size(), 0);
-            
+            const auto sendNs = robotpal::benchmark::SteadyNowNs() - sendStart;
+
             if (sent == SOCKET_ERROR) {
+                robotpal::benchmark::Event("send_failed", frameId, sendNs, 0, "socket_error");
                 std::cerr << "[TCP] Send Error\n";
                 m_IsConnected = false;
                 break;
+            } else if (sent != static_cast<int>(data.size())) {
+                robotpal::benchmark::Event("send_failed", frameId, sendNs, sent, "partial_send");
+            } else {
+                robotpal::benchmark::Event("send_completed", frameId, sendNs, sent);
             }
         }
         else

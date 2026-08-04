@@ -23,8 +23,8 @@
 
 static std::unique_ptr<SimController> g_Controller;
 static Entity prefabEntity;
-// static float cam_W = 1632.f/2.f, cam_H = 1232.f/2.f;
-static float cam_W = 224.f, cam_H = 224.f;
+static constexpr int cam_W = 1232;
+static constexpr int cam_H = 832;
 std::shared_ptr<Framebuffer> camView;
 void SandboxScene::OnEnter()
 {    

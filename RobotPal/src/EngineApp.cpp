@@ -30,6 +30,7 @@
 #include "RobotPal/EditorLayer.h"
 #include <thread>
 #include <chrono>
+#include <cstdlib>
 
 void EngineApp::Run()
 {
@@ -75,6 +76,9 @@ void EngineApp::Init()
 void EngineApp::MainLoop()
 {
     m_LastFrameTime=(float)glfwGetTime();
+    const char* durationValue = std::getenv("ROBOTPAL_BENCHMARK_DURATION_SECONDS");
+    const double benchmarkDuration = durationValue ? std::strtod(durationValue, nullptr) : 0.0;
+    const double benchmarkStart = glfwGetTime();
     //glm::vec4 clear_color = {0.45f, 0.55f, 0.60f, 1.00f};
     glm::vec4 clear_color = {0.1f, 0.1f, 0.1f, 1.00f};
 
@@ -87,6 +91,10 @@ void EngineApp::MainLoop()
     while (!m_Window->ShouldClose())
 #endif
     {
+        if (benchmarkDuration > 0.0 && glfwGetTime() - benchmarkStart >= benchmarkDuration) {
+            glfwSetWindowShouldClose((GLFWwindow*)m_Window->GetNativeWindow(), GLFW_TRUE);
+            continue;
+        }
         float currentFrame = (float)glfwGetTime();
         float dt = currentFrame - m_LastFrameTime;
         m_LastFrameTime = currentFrame;

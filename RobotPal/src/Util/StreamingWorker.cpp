@@ -1,12 +1,12 @@
 #include "RobotPal/Util/StreamingPipeline.h"
 
 #include "RobotPal/Util/JpegEncoder.h"
-#include "RobotPal/Util/bench.h"
+#include "RobotPal/Util/Benchmark.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <iostream>
 #include <vector>
-
-static PerfStats perfEncode;
 
 // ---------------------------------------------
 // Thread config (Native / Emscripten)
@@ -16,6 +16,11 @@ struct StreamingThreadConfig {
 };
 
 static StreamingThreadConfig GetStreamingThreadConfig() {
+    const char* configured = std::getenv("ROBOTPAL_ENCODE_WORKERS");
+    if (configured) {
+        const int workers = std::atoi(configured);
+        if (workers == 1 || workers == 4) return {static_cast<unsigned>(workers)};
+    }
 #ifdef __EMSCRIPTEN__
     #ifdef __EMSCRIPTEN_PTHREADS__
         unsigned max_web_workers = 8; 
@@ -25,7 +30,7 @@ static StreamingThreadConfig GetStreamingThreadConfig() {
     #endif
 #else
     // Native TCP
-    return {std::max(1u, std::thread::hardware_concurrency() - 3) };
+    return {4};
 #endif
 }
 
@@ -71,7 +76,9 @@ void StreamingPipeline::PushFrame(
     int width,
     int height,
     int components,
-    uint32_t frameId
+    uint32_t frameId,
+    uint64_t generatedUnixNs,
+    uint64_t queueStartNs
 ) {
     FrameEncodeJob job;
     job.pixels = std::move(pixels);
@@ -79,10 +86,24 @@ void StreamingPipeline::PushFrame(
     job.height = height;
     job.components = components;
     job.frameId = frameId;
+    job.generatedUnixNs = generatedUnixNs;
+    job.queueStartNs = queueStartNs;
 
     {
         std::lock_guard<std::mutex> lk(m_encodeQueueMutex);
+        if (m_encodeQueue.size() >= EncodeQueueCapacity) {
+            const auto droppedFrameId = m_encodeQueue.front().frameId;
+            m_encodeQueue.pop();
+            robotpal::benchmark::Event(
+                "encode_queue_dropped",
+                droppedFrameId,
+                0,
+                EncodeQueueCapacity,
+                "drop_oldest_capacity_6"
+            );
+        }
         m_encodeQueue.push(std::move(job));
+        robotpal::benchmark::Event("encode_queued", frameId, 0, m_encodeQueue.size());
     }
     m_encodeQueueCv.notify_one();
 }
@@ -118,6 +139,7 @@ void StreamingPipeline::EncodeWorkerLoop() {
 
             job = std::move(m_encodeQueue.front());
             m_encodeQueue.pop();
+            robotpal::benchmark::Event("encode_dequeued", job.frameId, robotpal::benchmark::SteadyNowNs() - job.queueStartNs, m_encodeQueue.size());
         }
 
         const uint8_t* rgbPtr = nullptr;
@@ -146,6 +168,7 @@ void StreamingPipeline::EncodeWorkerLoop() {
             }
             rgbPtr = rgbBuffer.data();
         } else {
+            robotpal::benchmark::Event("encode_failed", job.frameId, 0, 0, "unsupported_components");
             continue;
         }
 
@@ -153,7 +176,7 @@ void StreamingPipeline::EncodeWorkerLoop() {
         // [Optimized] 기존 벡터 재사용 (clear만 호출)
         jpegOut.clear();
         
-        double t0 = now_ms();
+        const auto t0 = robotpal::benchmark::SteadyNowNs();
         bool ok = jpeg->EncodeRGB(
             rgbPtr,
             job.width,
@@ -161,12 +184,13 @@ void StreamingPipeline::EncodeWorkerLoop() {
             70,
             jpegOut
         );
-        double t1 = now_ms();
+        const auto encodeNs = robotpal::benchmark::SteadyNowNs() - t0;
 
-        if (!ok)
+        if (!ok) {
+            robotpal::benchmark::Event("encode_failed", job.frameId, encodeNs, 0, "jpeg");
             continue;
-
-        perfEncode.add(t1 - t0);
+        }
+        robotpal::benchmark::Event("encode_completed", job.frameId, encodeNs, jpegOut.size());
 
         // Packet 생성: [Header 4bytes] + [JPEG Body]
         uint32_t len = static_cast<uint32_t>(jpegOut.size());
@@ -176,15 +200,24 @@ void StreamingPipeline::EncodeWorkerLoop() {
         
         // 헤더 공간 + 데이터 공간 확보
         // reserve는 현재 capacity보다 클 때만 재할당하므로 안전
-        if (packet.capacity() < 4 + len) {
-            packet.reserve(4 + len); 
+        constexpr uint32_t metadataSize = 20;
+        const bool benchmarkEnabled = robotpal::benchmark::EventLog::Instance().Enabled();
+        const uint32_t bodyLen = len + (benchmarkEnabled ? metadataSize : 0);
+        if (packet.capacity() < 4 + bodyLen) {
+            packet.reserve(4 + bodyLen);
         }
 
         // 헤더
-        packet.push_back(len & 0xFF);
-        packet.push_back((len >> 8) & 0xFF);
-        packet.push_back((len >> 16) & 0xFF);
-        packet.push_back((len >> 24) & 0xFF);
+        packet.push_back(bodyLen & 0xFF);
+        packet.push_back((bodyLen >> 8) & 0xFF);
+        packet.push_back((bodyLen >> 16) & 0xFF);
+        packet.push_back((bodyLen >> 24) & 0xFF);
+        if (benchmarkEnabled) {
+            const uint8_t magic[8] = {'R','P','B','E','N','C','H','1'};
+            packet.insert(packet.end(), magic, magic + 8);
+            for (int shift = 0; shift < 4; ++shift) packet.push_back(static_cast<uint8_t>((job.frameId >> (shift * 8)) & 0xff));
+            for (int shift = 0; shift < 8; ++shift) packet.push_back(static_cast<uint8_t>((job.generatedUnixNs >> (shift * 8)) & 0xff));
+        }
         
         // 데이터 (insert 최적화 활용)
         packet.insert(packet.end(), jpegOut.begin(), jpegOut.end());
@@ -194,6 +227,7 @@ void StreamingPipeline::EncodeWorkerLoop() {
             // 복사가 발생하지만, 여기서 packet 인스턴스 자체는 유지되어 
             // 다음 루프에서 재사용됨.
             m_networkEngine->SendPacket(packet);
+            robotpal::benchmark::Event("send_queued", job.frameId, 0, packet.size());
         }
     }
 }

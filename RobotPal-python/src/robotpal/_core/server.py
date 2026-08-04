@@ -6,12 +6,15 @@ import numpy as np
 import json
 import struct
 import traitlets
+import os
+import time
 from traitlets.config.configurable import SingletonConfigurable
 from concurrent.futures import ThreadPoolExecutor
 
 # 서버 포트 설정
 PORT_WEB = 9999
 PORT_TCP = 9998
+BENCH_MAGIC = b'RPBENCH1'
 
 
 class SimulatorServer(SingletonConfigurable):
@@ -35,6 +38,10 @@ class SimulatorServer(SingletonConfigurable):
         self.active_ws = None
         self.active_tcp_writer = None
         self.queue_web_raw = None
+        self._benchmark_stream = None
+        benchmark_path = os.environ.get("ROBOTPAL_RECEIVER_BENCHMARK_LOG")
+        if benchmark_path:
+            self._benchmark_stream = open(benchmark_path, "w", encoding="utf-8", buffering=1)
 
         self.motor_states = {1: 0.0, 2: 0.0}
         
@@ -42,6 +49,22 @@ class SimulatorServer(SingletonConfigurable):
         self.executor = ThreadPoolExecutor(max_workers=4)
 
         self._start()
+
+    def _benchmark_event(self, event, frame_id=0, duration_ns=0, value=0, reason="", generated_unix_ns=0):
+        if not self._benchmark_stream:
+            return
+        record = {"event": event, "frame_id": frame_id, "steady_ns": time.perf_counter_ns(),
+                  "unix_ns": time.time_ns(), "duration_ns": duration_ns, "value": value,
+                  "reason": reason, "generated_unix_ns": generated_unix_ns}
+        self._benchmark_stream.write(json.dumps(record, separators=(",", ":")) + "\n")
+
+    @staticmethod
+    def _split_benchmark_metadata(payload):
+        if len(payload) >= 20 and payload[:8] == BENCH_MAGIC:
+            frame_id = struct.unpack('<I', payload[8:12])[0]
+            generated_ns = struct.unpack('<Q', payload[12:20])[0]
+            return payload[20:], frame_id, generated_ns
+        return payload, 0, 0
 
     def _start(self):
         if self.running: return
@@ -82,7 +105,10 @@ class SimulatorServer(SingletonConfigurable):
             async for message in websocket:
                 if isinstance(message, bytes):
                     if self.queue_web_raw.full():
-                        try: self.queue_web_raw.get_nowait()
+                        try:
+                            dropped = self.queue_web_raw.get_nowait()
+                            _, dropped_id, _ = self._split_benchmark_metadata(dropped[4:] if len(dropped) >= 4 else dropped)
+                            self._benchmark_event("receive_dropped", dropped_id, reason="web_queue_full")
                         except: pass
                     await self.queue_web_raw.put(message)
         except: pass
@@ -101,17 +127,24 @@ class SimulatorServer(SingletonConfigurable):
                 if len(message) < 4: continue
 
                 packet_len = struct.unpack('<L', message[:4])[0]
-                jpeg_data = message[4:]
+                jpeg_data, frame_id, generated_ns = self._split_benchmark_metadata(message[4:4 + packet_len])
+                self._benchmark_event("received", frame_id, value=len(jpeg_data), generated_unix_ns=generated_ns)
 
                 # [최적화 A] 화면 표시용: 원본 JPEG 즉시 업데이트 (디코딩 X)
                 self.latest_jpeg = bytes(jpeg_data)
 
                 # [최적화 B] AI용: 백그라운드 스레드에서 리사이즈 수행
+                process_start = time.perf_counter_ns()
                 frame = await loop.run_in_executor(
                     self.executor, self._decode_and_resize, jpeg_data
                 )
                 if frame is not None:
                     self.latest_image = frame
+                    self._benchmark_event("consumed", frame_id, time.perf_counter_ns() - process_start,
+                                          generated_unix_ns=generated_ns)
+                else:
+                    self._benchmark_event("receive_failed", frame_id, time.perf_counter_ns() - process_start,
+                                          reason="decode", generated_unix_ns=generated_ns)
 
             except asyncio.CancelledError: break
             except Exception: pass
@@ -134,17 +167,24 @@ class SimulatorServer(SingletonConfigurable):
                     msg_size = struct.unpack('<L', buffer[:4])[0]
                     if len(buffer) < 4 + msg_size: break
 
-                    frame_data = buffer[4: 4 + msg_size]
+                    frame_data, frame_id, generated_ns = self._split_benchmark_metadata(buffer[4: 4 + msg_size])
+                    self._benchmark_event("received", frame_id, value=len(frame_data), generated_unix_ns=generated_ns)
                     
                     # [최적화 A]
                     self.latest_jpeg = bytes(frame_data)
                     
                     # [최적화 B]
+                    process_start = time.perf_counter_ns()
                     frame = await loop.run_in_executor(
                         self.executor, self._decode_and_resize, frame_data
                     )
                     if frame is not None:
                         self.latest_image = frame
+                        self._benchmark_event("consumed", frame_id, time.perf_counter_ns() - process_start,
+                                              generated_unix_ns=generated_ns)
+                    else:
+                        self._benchmark_event("receive_failed", frame_id, time.perf_counter_ns() - process_start,
+                                              reason="decode", generated_unix_ns=generated_ns)
 
                     buffer = buffer[4 + msg_size:]
         except: pass
