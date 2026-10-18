@@ -90,20 +90,20 @@ FetchContent_Declare(imgui_guizmo_external
 FetchContent_MakeAvailable(imgui_guizmo_external)
 
 add_library(imgui_guizmo STATIC
-    ${imgui_guizmo_external_SOURCE_DIR}/GraphEditor.cpp
-    ${imgui_guizmo_external_SOURCE_DIR}/GraphEditor.h
-    ${imgui_guizmo_external_SOURCE_DIR}/ImCurveEdit.cpp
-    ${imgui_guizmo_external_SOURCE_DIR}/ImCurveEdit.h
-    ${imgui_guizmo_external_SOURCE_DIR}/ImGradient.cpp
-    ${imgui_guizmo_external_SOURCE_DIR}/ImGradient.h
-    ${imgui_guizmo_external_SOURCE_DIR}/ImGuizmo.cpp
-    ${imgui_guizmo_external_SOURCE_DIR}/ImGuizmo.h
-    ${imgui_guizmo_external_SOURCE_DIR}/ImSequencer.cpp
-    ${imgui_guizmo_external_SOURCE_DIR}/ImSequencer.h
-    ${imgui_guizmo_external_SOURCE_DIR}/ImZoomSlider.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/GraphEditor.cpp
+    ${imgui_guizmo_external_SOURCE_DIR}/src/GraphEditor.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImCurveEdit.cpp
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImCurveEdit.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImGradient.cpp
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImGradient.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImGuizmo.cpp
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImGuizmo.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImSequencer.cpp
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImSequencer.h
+    ${imgui_guizmo_external_SOURCE_DIR}/src/ImZoomSlider.h
 )
 
-target_include_directories(imgui_guizmo PUBLIC ${imgui_guizmo_external_SOURCE_DIR})
+target_include_directories(imgui_guizmo PUBLIC ${imgui_guizmo_external_SOURCE_DIR}/src)
 target_link_libraries(imgui_guizmo PUBLIC imgui)
 
 # Draco 및 기타 라이브러리

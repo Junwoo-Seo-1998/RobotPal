@@ -101,9 +101,32 @@ python -m http.server
 
 Contributions are always welcome! If you would like to contribute to RobotPal, please fork the repository and create a pull request. You can also open an issue to report bugs or suggest new features.
 
+## Performance Benchmark Guide
+
+For a reproducible streaming bottleneck test setup, see `docs/perf/streaming_bottleneck_test_setup.md`.
+
+## Contributing
+
+Contributions are always welcome! If you would like to contribute to RobotPal, please fork the repository and create a pull request. You can also open an issue to report bugs or suggest new features.
+
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+## Performance Note: PBO-based Asynchronous Readback
+
+When sending rendered frames over network streaming, one expensive step is reading pixel data from GPU memory back to CPU memory (`glReadPixels`).
+
+- **Synchronous readback (direct pointer):** CPU may block until GPU rendering finishes.
+- **PBO readback (pixel pack buffer):** GPU writes into a buffer object first, and CPU maps a previously written buffer in the next frame.
+
+In RobotPal, the desktop path uses **double-buffered PBO ping-pong** in `Texture::GetAsyncData`.
+
+1. Frame N: issue `glReadPixels(..., 0)` to `PBO[writeIndex]` (GPU-side write request)
+2. Frame N: map `PBO[readIndex]` and copy previous frame data on CPU
+3. Swap indices and repeat
+
+This does not remove all stalls, but it typically reduces CPU-GPU synchronization pressure versus immediate readback.
 
 ---
 
@@ -214,3 +237,18 @@ python -m http.server
 
 이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 `LICENSE` 파일을 참고하세요.
 
+## 성능 노트: 스트리밍 병목
+
+최신 1232×832 벤치마크는 동기 Readback, PBO 단독, PBO + JPEG 4 Worker 구조를 비교했으며, 각 조건의 Streaming OFF/ON을 5회 측정해 median을 사용했습니다.
+
+Tracy로 계측한 결과 초기 가설과 달리 GPU Readback이 주된 Main Thread 병목은 아니었습니다. Sync 조건에서 Readback p50은 **1.144 ms**였지만 JPEG 압축 p50은 **16.406 ms**였습니다. 따라서 PBO 단독 적용만으로는 애플리케이션 전체 성능이 개선되지 않았습니다.
+
+실제 효과가 컸던 변경은 JPEG 압축을 simulation critical path에서 분리한 것입니다. PBO + JPEG 4 Worker 구조에서:
+
+- Streaming ON Simulation FPS: **66.70 → 96.01** (+43.9%)
+- Camera Send FPS: **26.95 → 40.05** (+48.6%)
+- Streaming Penalty: **34.84% → 6.74%** (-28.1%p)
+
+아직 60 FPS 송신 목표에는 도달하지 못했습니다. 다음 우선순위는 JPEG 인코더 처리량, 불필요한 CPU 메모리 복사, 4 Worker 처리 구조입니다.
+
+최신 기준 수치와 한계는 [docs/streaming-performance-result.md](./docs/streaming-performance-result.md)를 사용합니다.

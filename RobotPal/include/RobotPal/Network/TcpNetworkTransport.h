@@ -1,6 +1,6 @@
 #pragma once
 #include "RobotPal/Network/NetworkTransport.h"
-#include "RobotPal/Network/NetworkQueue.h" // 기존 큐 재사용
+#include "RobotPal/Network/StreamingSendPolicy.h"
 #include <thread>
 #include <atomic>
 #include <vector>
@@ -35,8 +35,12 @@ public:
     // [인터페이스 구현]
     bool Connect(const std::string& url) override;
     void Disconnect() override;
+    // Outgoing stream is replaceable video; do not share with reliable commands.
     void Send(const std::vector<uint8_t>& data) override;
     bool IsConnected() const override { return m_IsConnected; }
+    size_t PendingPackets() const { return m_SendQueue.Size(); }
+    size_t PendingBytes() const { return m_SendQueue.Bytes(); }
+    size_t DroppedPackets() const { return m_SendQueue.Dropped(); }
 
 private:
     // 내부 스레드 함수
@@ -44,7 +48,7 @@ private:
     void SendWorker();
 
     // 소켓 헬퍼
-    bool InitSocket();
+    void StopWorkers();
     void CleanupSocket();
 
 private:
@@ -56,7 +60,8 @@ private:
     std::thread m_RecvThread;
     std::thread m_SendThread;
 
-    NetworkQueue m_SendQueue; 
+    std::mutex m_enqueueMutex;
+    robotpal::BoundedSendQueue m_SendQueue;
 };
 
 #endif

@@ -22,6 +22,9 @@ private:
     std::unique_ptr<StreamingPipeline> m_worker;
     // [필수 추가] CPP 파일에서 사용 중인 멤버 변수 선언
     flecs::world &m_world;      // CPP에서 m_world->get_info()로 접근하므로 포인터여야 합니다.
+    bool m_pboPrimed = false;
+    uint32_t m_pendingPboFrameId = 0;
+    uint64_t m_pendingPboGeneratedUnixNs = 0;
 };
 
 #endif

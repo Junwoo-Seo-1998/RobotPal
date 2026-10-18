@@ -33,6 +33,12 @@ bool NetworkQueue::Empty()
     return packetQueue.empty();
 }
 
+size_t NetworkQueue::Size()
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    return packetQueue.size();
+}
+
 void NetworkQueue::Clear()
 {
     std::lock_guard<std::mutex> lock(mtx);

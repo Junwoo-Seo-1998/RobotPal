@@ -30,6 +30,7 @@
 #include "RobotPal/EditorLayer.h"
 #include <thread>
 #include <chrono>
+#include <cstdlib>
 
 void EngineApp::Run()
 {
@@ -75,8 +76,13 @@ void EngineApp::Init()
 void EngineApp::MainLoop()
 {
     m_LastFrameTime=(float)glfwGetTime();
+    const char* durationValue = std::getenv("ROBOTPAL_BENCHMARK_DURATION_SECONDS");
+    const double benchmarkDuration = durationValue ? std::strtod(durationValue, nullptr) : 0.0;
+    const double benchmarkStart = glfwGetTime();
     //glm::vec4 clear_color = {0.45f, 0.55f, 0.60f, 1.00f};
     glm::vec4 clear_color = {0.1f, 0.1f, 0.1f, 1.00f};
+    uint64_t fpsFrames = 0;
+    float fpsElapsed = 0.0f;
 
     RenderCommand::Init(); 
 #ifdef __EMSCRIPTEN__
@@ -87,6 +93,10 @@ void EngineApp::MainLoop()
     while (!m_Window->ShouldClose())
 #endif
     {
+        if (benchmarkDuration > 0.0 && glfwGetTime() - benchmarkStart >= benchmarkDuration) {
+            glfwSetWindowShouldClose((GLFWwindow*)m_Window->GetNativeWindow(), GLFW_TRUE);
+            continue;
+        }
         float currentFrame = (float)glfwGetTime();
         float dt = currentFrame - m_LastFrameTime;
         m_LastFrameTime = currentFrame;
@@ -131,6 +141,15 @@ void EngineApp::MainLoop()
         ImGuiManager::Get().Render(m_Window->GetNativeWindow());
         
         m_Window->SwapBuffers();
+
+        fpsFrames++;
+        fpsElapsed += dt;
+        if (fpsElapsed >= 1.0f) {
+            const float appFps = static_cast<float>(fpsFrames) / fpsElapsed;
+            std::cout << "[APP FPS] " << appFps << std::endl;
+            fpsFrames = 0;
+            fpsElapsed = 0.0f;
+        }
     }
 #ifdef __EMSCRIPTEN__
     EMSCRIPTEN_MAINLOOP_END;
@@ -145,3 +164,4 @@ void EngineApp::Shutdown()
     ImGuiManager::Get().Shutdown();
     m_Window->Shutdown();
 }
+

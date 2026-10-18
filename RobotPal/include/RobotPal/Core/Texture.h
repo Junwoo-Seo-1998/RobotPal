@@ -50,6 +50,7 @@ public:
     // currentFrameIndex: 현재 프레임 번호 (중복 호출 방지용)
     // ---------------------------------------------------------
     std::vector<uint8_t> GetAsyncData(uint64_t currentFrameIndex);
+    std::vector<uint8_t> GetSyncData(uint64_t currentFrameIndex);
 
     // Getters
     unsigned int GetID() const { return m_RendererID; }

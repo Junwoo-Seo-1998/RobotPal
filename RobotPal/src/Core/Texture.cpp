@@ -1,8 +1,45 @@
 #include "RobotPal/Core/Texture.h"
+#include "RobotPal/Util/Benchmark.h"
 #include <cstring> // memcpy
 #include <algorithm> // std::max (혹시 모를 상황 대비)
 // 정적 멤버 초기화
 unsigned int Texture::s_ReadFBO = 0;
+
+std::vector<uint8_t> Texture::GetSyncData(uint64_t currentFrameIndex) {
+    if (m_Type != TextureType::Texture2D) return {};
+    const int pixelCount = m_Width * m_Height;
+    const int srcChannels = 4;
+    const int dstChannels = (m_Format == TextureFormat::RGBA8) ? 4 : 3;
+    const size_t rgbaSize = static_cast<size_t>(pixelCount) * srcChannels;
+    if (dstChannels == 4 && m_CachedData.size() != rgbaSize) m_CachedData.resize(rgbaSize);
+    std::vector<uint8_t> rgbaData;
+    if (dstChannels != 4) rgbaData.resize(rgbaSize);
+    uint8_t* readDestination = dstChannels == 4 ? m_CachedData.data() : rgbaData.data();
+
+    if (s_ReadFBO == 0) glGenFramebuffers(1, &s_ReadFBO);
+    GLint lastFBO;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &lastFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_ReadFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_RendererID, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+    const auto readStart = robotpal::benchmark::SteadyNowNs();
+    glReadPixels(0, 0, m_Width, m_Height, GL_RGBA, GL_UNSIGNED_BYTE, readDestination);
+    robotpal::benchmark::Event("readback_sync_glreadpixels", currentFrameIndex,
+        robotpal::benchmark::SteadyNowNs() - readStart, rgbaSize);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, lastFBO);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    if (dstChannels == 4) return m_CachedData;
+
+    std::vector<uint8_t> rgbData(static_cast<size_t>(pixelCount) * dstChannels);
+    for (int i = 0; i < pixelCount; ++i) {
+        rgbData[i * 3 + 0] = rgbaData[i * 4 + 0];
+        rgbData[i * 3 + 1] = rgbaData[i * 4 + 1];
+        rgbData[i * 3 + 2] = rgbaData[i * 4 + 2];
+    }
+    return rgbData;
+}
 
 Texture::Texture(int width, int height, TextureFormat format, TextureType type)
     : m_Width(width), m_Height(height), m_Format(format), m_Type(type)
@@ -261,7 +298,10 @@ std::vector<uint8_t> Texture::GetAsyncData(uint64_t currentFrameIndex) {
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     // [중요] GL_RGBA 포맷으로 읽기 (대부분의 드라이버 호환성 확보)
+    const auto submitStart = robotpal::benchmark::SteadyNowNs();
     glReadPixels(0, 0, m_Width, m_Height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    robotpal::benchmark::Event("readback_pbo_submit", currentFrameIndex,
+        robotpal::benchmark::SteadyNowNs() - submitStart, pixelCount * srcChannels);
 
     glBindFramebuffer(GL_FRAMEBUFFER, lastFBO);
 
@@ -270,9 +310,13 @@ std::vector<uint8_t> Texture::GetAsyncData(uint64_t currentFrameIndex) {
     glBindBuffer(GL_PIXEL_PACK_BUFFER, m_PBOs[readIndex]);
     
     // 맵핑 (이전 프레임 데이터라 대기 시간 거의 없음)
+    const auto mapStart = robotpal::benchmark::SteadyNowNs();
     uint8_t* ptr = (uint8_t*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, pixelCount * srcChannels, GL_MAP_READ_BIT);
+    robotpal::benchmark::Event("readback_pbo_map", currentFrameIndex,
+        robotpal::benchmark::SteadyNowNs() - mapStart, pixelCount * srcChannels);
     
     if (ptr) {
+        const auto copyStart = robotpal::benchmark::SteadyNowNs();
         if (dstChannels == 4) {
             // RGBA 그대로 복사
             memcpy(m_CachedData.data(), ptr, pixelCount * srcChannels);
@@ -286,6 +330,8 @@ std::vector<uint8_t> Texture::GetAsyncData(uint64_t currentFrameIndex) {
                 dst[i*3 + 2] = ptr[i*4 + 2]; // B
             }
         }
+        robotpal::benchmark::Event("readback_pbo_copy", currentFrameIndex,
+            robotpal::benchmark::SteadyNowNs() - copyStart, pixelCount * dstChannels);
         glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
     } 
     else {

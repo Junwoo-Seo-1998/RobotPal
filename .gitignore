@@ -289,3 +289,6 @@ venv
 .venv
 
 RobotPal-python/sample
+
+# Local benchmark outputs (JSONL/CSV/logs/summaries)
+/results/
